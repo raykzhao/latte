@@ -1,0 +1,18 @@
+#ifndef _PARAM_H
+#define _PARAM_H
+
+#include <stdint.h>
+
+#define PREC 256
+
+#define N 2048
+
+#define Q 33550337 /* 2^25 - 2^12 + 1 */
+
+#define L 1
+
+static const char sigma_str[L + 1][PREC] = {"105.8898495333906004436481317409590103712301684749938289713299017810710094328", "7879.751651568628818099932228613532018907917949999055826533962611749918753178"}; 
+
+static const char norm_str[L][PREC] = {"45927056.3193"};
+
+#endif
