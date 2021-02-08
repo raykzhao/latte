@@ -388,7 +388,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 {
 	static POLY_Z f_z, g_z, F_z, G_z;
 	
-	mpfr_t sigma, center, norm_bound;
+	mpfr_t norm_bound;
 	uint64_t i;
 	
 	poly_z_init(&f_z, N);
@@ -396,21 +396,15 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_init(&F_z, N);
 	poly_z_init(&G_z, N);
 	
-	mpfr_inits2(PREC, sigma, center, norm_bound, NULL);
-	
-	mpfr_set_str(sigma, sigma_str[0], 10, MPFR_RNDN);
-	mpfr_set_zero(center, 0);
+	mpfr_init2(norm_bound, PREC);
 	
 	mpfr_set_str(norm_bound, norm_str[0], 10, MPFR_RNDN);
 		
 	while (1)
 	{
 		/* f, g <-- (D_{\sigma_0})^N */
-		for (i = 0; i < N; i++)
-		{
-			f->poly[i] = sample_z(center, sigma);
-			g->poly[i] = sample_z(center, sigma);
-		}
+		sample_0z(f);
+		sample_0z(g);
 		
 		/* Norm check */
 		if (gs_norm(f, g, norm_bound))
@@ -439,7 +433,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		G->poly[i] = mpz_get_si(G_z.poly[i]);
 	}
 	
-	mpfr_clears(sigma, center, norm_bound, NULL);
+	mpfr_clear(norm_bound);
 
 	poly_z_clear(&f_z, N);
 	poly_z_clear(&g_z, N);

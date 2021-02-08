@@ -12,5 +12,6 @@
 
 int64_t sample_z(const mpfr_t center, const mpfr_t sigma);
 void sample_e(POLY_64 *out);
+void sample_0z(POLY_64 *sample);
 
 #endif
