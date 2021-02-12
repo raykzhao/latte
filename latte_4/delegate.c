@@ -58,6 +58,8 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	
 	uint64_t norm;
 	
+	uint64_t f_det_check;
+	
 	fastrandombytes_setseed(seed);
 	
 	mat_fft_init(&fft_basis, l + 1, N);
@@ -221,13 +223,21 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 		ifft(&f_fft, N);
 		ifft(&g_fft, N);
 		
+		f_det_check = 0;
 		for (p = 0; p < N; p++)
 		{
 			mpfr_round(tmp, mpc_realref(f_fft.poly[p]));
 			mpfr_get_z(f.poly[p], tmp, MPFR_RNDN);
 			
+			f_det_check |= mpz_sgn(f.poly[p]);
+			
 			mpfr_round(tmp, mpc_realref(g_fft.poly[p]));
 			mpfr_get_z(g.poly[p], tmp, MPFR_RNDN);
+		}
+		
+		if (!f_det_check)
+		{
+			continue;
 		}
 	} while (tower_solver(&F, &G, &f, &g, N));
 	
