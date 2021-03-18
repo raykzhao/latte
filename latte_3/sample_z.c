@@ -109,7 +109,10 @@ static void sample_z_init()
 	}
 }
 
-/* COSAC sampler */
+/* New COSAC sampler. 
+ * This is the sampling algorithm from:
+ * Shuo Sun, Yongbin Zhou, Yunfeng Ji, Rui Zhang, & Yang Tao. (2021). Generic, Efficient and Isochronous Gaussian Sampling over the Integers. 
+ * https://eprint.iacr.org/2021/199 */
 int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 {
 	unsigned char r[DISCRETE_BYTES]; 	
@@ -121,7 +124,7 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 	mpfr_t comp;
 	mpfr_t yrc;
 	
-	uint64_t b, i;
+	uint64_t i;
 	int64_t cmp1;
 	uint64_t head = 2;
 
@@ -137,7 +140,7 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 	mpfr_inits2(PREC, c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
 	
 	mpfr_round(cr, center);
-	mpfr_sub(c, cr, center, MPFR_RNDN);
+	mpfr_sub(c, center, cr, MPFR_RNDN);
 	
 	mpfr_sqr(sigma2, sigma, MPFR_RNDN);
 	mpfr_mul_2ui(sigma2, sigma2, 1, MPFR_RNDN);
@@ -211,48 +214,38 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 				mpfr_mul(norm[0], r1, norm[0], MPFR_RNDN);
 				mpfr_mul(norm[1], r1, norm[1], MPFR_RNDN);
 			}
-
-			b = (r[DISCRETE_BYTES - 1] >> i) & 0x01;
 			
-			mpfr_round(yr, norm[head]);
-			if (b)
-			{
-				mpfr_add_ui(yr, yr, 1, MPFR_RNDN);
-				cmp1 = mpfr_cmp_d(norm[head], -0.5) >= 0;
-			}
-			else
-			{
-				mpfr_sub_ui(yr, yr, 1, MPFR_RNDN);
-				cmp1 = mpfr_cmp_d(norm[head], 0.5) <= 0;
-			}
+			mpfr_add(yr, norm[head], c, MPFR_RNDN);
 			
-			if (cmp1)
+			cmp1 = mpfr_sgn(yr) >= 0;
+			
+			mpfr_floor(yr, yr);
+			mpfr_add_ui(yr, yr, cmp1, MPFR_RNDN);
+			
+			mpfr_sub(yrc, yr, c, MPFR_RNDN);
+			mpfr_add(rej, yrc, norm[head], MPFR_RNDN);
+			mpfr_sub(yrc, yrc, norm[head], MPFR_RNDN);
+			mpfr_mul(rej, rej, yrc, MPFR_RNDN);
+			mpfr_div(rej, rej, sigma2, MPFR_RNDN);
+			mpfr_exp(rej, rej, MPFR_RNDN);
+			
+			mpfr_set_ui(comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 3], MPFR_RNDN);
+			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
+			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 2], MPFR_RNDN);
+			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
+			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 1], MPFR_RNDN);
+			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
+			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8)], MPFR_RNDN);
+			mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
+			
+			if (mpfr_less_p(comp, rej))
 			{
-				mpfr_add(yrc, yr, c, MPFR_RNDN);
-				mpfr_add(rej, yrc, norm[head], MPFR_RNDN);
-				mpfr_sub(yrc, yrc, norm[head], MPFR_RNDN);
-				mpfr_mul(rej, rej, yrc, MPFR_RNDN);
-				mpfr_div(rej, rej, sigma2, MPFR_RNDN);
-				mpfr_exp(rej, rej, MPFR_RNDN);
+				mpfr_add(yr, yr, cr, MPFR_RNDN);
 				
-				mpfr_set_ui(comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 3], MPFR_RNDN);
-				mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-				mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 2], MPFR_RNDN);
-				mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-				mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 1], MPFR_RNDN);
-				mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-				mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8)], MPFR_RNDN);
-				mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
+				ret = mpfr_get_si(yr, MPFR_RNDN);
 				
-				if (mpfr_less_p(comp, rej))
-				{
-					mpfr_add(yr, yr, cr, MPFR_RNDN);
-					
-					ret = mpfr_get_si(yr, MPFR_RNDN);
-					
-					mpfr_clears(c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
-					return ret;
-				}
+				mpfr_clears(c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
+				return ret;
 			}
 		}
 	}	
