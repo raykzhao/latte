@@ -19,10 +19,9 @@
 static void ldl_dim2(POLY_FFT *l_dim2, POLY_FFT *d, const MAT_FFT *g, const uint64_t n)
 {
 	uint64_t p;
-	mpc_t tmp1, tmp2;
+	mpc_t tmp;
 	
-	mpc_init2(tmp1, PREC);
-	mpc_init2(tmp2, PREC);
+	mpc_init2(tmp, PREC);
 	
 	for (p = 0; p < n; p++)
 	{
@@ -31,14 +30,12 @@ static void ldl_dim2(POLY_FFT *l_dim2, POLY_FFT *d, const MAT_FFT *g, const uint
 
 		mpc_div(l_dim2->poly[p], g->mat[1][0].poly[p], d[0].poly[p], MPC_RNDNN);
 
-		mpc_conj(tmp1, l_dim2->poly[p], MPC_RNDNN);
-		mpc_mul(tmp2, l_dim2->poly[p], tmp1, MPC_RNDNN);
-		mpc_mul(tmp2, tmp2, d[0].poly[p], MPC_RNDNN);
-		mpc_sub(d[1].poly[p], d[1].poly[p], tmp2, MPC_RNDNN);
+		mpc_conj(tmp, l_dim2->poly[p], MPC_RNDNN);
+		mpc_mul(tmp, g->mat[1][0].poly[p], tmp, MPC_RNDNN);
+		mpc_sub(d[1].poly[p], d[1].poly[p], tmp, MPC_RNDNN);
 	}
 	
-	mpc_clear(tmp1);
-	mpc_clear(tmp2);
+	mpc_clear(tmp);
 }
 
 /* LDL from Falcon */
@@ -77,11 +74,11 @@ static void ldl(MAT_FFT *l, POLY_FFT *d, const MAT_FFT *g, const uint64_t dim, c
 			
 			for (p = 0; p < n; p++)
 			{
+				mpc_set(tmp2, l->mat[i][j].poly[p], MPC_RNDNN);
 				mpc_div(l->mat[i][j].poly[p], l->mat[i][j].poly[p], d[j].poly[p], MPC_RNDNN);
 				
 				mpc_conj(tmp1, l->mat[i][j].poly[p], MPC_RNDNN);
-				mpc_mul(tmp2, l->mat[i][j].poly[p], tmp1, MPC_RNDNN);
-				mpc_mul(tmp2, tmp2, d[j].poly[p], MPC_RNDNN);
+				mpc_mul(tmp2, tmp2, tmp1, MPC_RNDNN);
 				mpc_sub(d[i].poly[p], d[i].poly[p], tmp2, MPC_RNDNN);
 			}
 		}
