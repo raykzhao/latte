@@ -42,10 +42,9 @@ static void ldl_dim2(POLY_FFT *l_dim2, POLY_FFT *d, const MAT_FFT *g, const uint
 static void ldl(MAT_FFT *l, POLY_FFT *d, const MAT_FFT *g, const uint64_t dim, const uint64_t n)
 {
 	uint64_t i, j, k, p;
-	mpc_t tmp1, tmp2;
+	mpc_t tmp;
 	
-	mpc_init2(tmp1, PREC);
-	mpc_init2(tmp2, PREC);
+	mpc_init2(tmp, PREC);
 	
 	for (i = 0; i < dim; i++)
 	{
@@ -65,27 +64,31 @@ static void ldl(MAT_FFT *l, POLY_FFT *d, const MAT_FFT *g, const uint64_t dim, c
 			{
 				for (p = 0; p < n; p++)
 				{
-					mpc_conj(tmp1, l->mat[j][k].poly[p], MPC_RNDNN);
-					mpc_mul(tmp2, l->mat[i][k].poly[p], tmp1, MPC_RNDNN);
-					mpc_mul(tmp2, tmp2, d[k].poly[p], MPC_RNDNN);
-					mpc_sub(l->mat[i][j].poly[p], l->mat[i][j].poly[p], tmp2, MPC_RNDNN);
+					mpc_conj(tmp, l->mat[j][k].poly[p], MPC_RNDNN);
+					mpc_mul(tmp, l->mat[i][k].poly[p], tmp, MPC_RNDNN);
+					mpc_sub(l->mat[i][j].poly[p], l->mat[i][j].poly[p], tmp, MPC_RNDNN);
 				}
 			}
 			
 			for (p = 0; p < n; p++)
 			{
-				mpc_set(tmp2, l->mat[i][j].poly[p], MPC_RNDNN);
+				mpc_div(tmp, l->mat[i][j].poly[p], d[j].poly[p], MPC_RNDNN);
+				mpc_conj(tmp, tmp, MPC_RNDNN);
+				mpc_mul(tmp, l->mat[i][j].poly[p], tmp, MPC_RNDNN);
+				mpc_sub(d[i].poly[p], d[i].poly[p], tmp, MPC_RNDNN);
+			}
+		}
+		
+		for (j = 0; j < i; j++)
+		{
+			for (p = 0; p < n; p++)
+			{
 				mpc_div(l->mat[i][j].poly[p], l->mat[i][j].poly[p], d[j].poly[p], MPC_RNDNN);
-				
-				mpc_conj(tmp1, l->mat[i][j].poly[p], MPC_RNDNN);
-				mpc_mul(tmp2, tmp2, tmp1, MPC_RNDNN);
-				mpc_sub(d[i].poly[p], d[i].poly[p], tmp2, MPC_RNDNN);
 			}
 		}
 	}
 	
-	mpc_clear(tmp1);
-	mpc_clear(tmp2);
+	mpc_clear(tmp);
 }
 
 /* ffLDL from Falcon (for dim = 2) */
