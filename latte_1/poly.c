@@ -11,7 +11,7 @@
 #include <gmp.h>
 
 /* Karatsuba multiplication */
-static void karatsuba(mpz_t *out, const mpz_t *a, const mpz_t *b, const uint64_t n)
+static void karatsuba_zz(mpz_t *out, const mpz_t *a, const mpz_t *b, const uint64_t n)
 {
 	mpz_t ax[N >> 1], bx[N >> 1];
 	mpz_t axbx[N];
@@ -44,9 +44,9 @@ static void karatsuba(mpz_t *out, const mpz_t *a, const mpz_t *b, const uint64_t
 			mpz_add(bx[i], b[i], b[i + n2]);
 		}
 		
-		karatsuba(out, a, b, n2);
-		karatsuba(out + n, a + n2, b + n2, n2);
-		karatsuba(axbx, ax, bx, n2);
+		karatsuba_zz(out, a, b, n2);
+		karatsuba_zz(out + n, a + n2, b + n2, n2);
+		karatsuba_zz(axbx, ax, bx, n2);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -67,7 +67,7 @@ static void karatsuba(mpz_t *out, const mpz_t *a, const mpz_t *b, const uint64_t
 }
 
 /* Polynomial multiplication over Z[x] / (x^N + 1) */
-void poly_z_mul(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n)
+void poly_mul_zz(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n)
 {
 	static mpz_t tmp[N << 1];
 	
@@ -78,7 +78,7 @@ void poly_z_mul(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n)
 		mpz_init(tmp[i]);
 	}
 	
-	karatsuba(tmp, a->poly, b->poly, n);
+	karatsuba_zz(tmp, a->poly, b->poly, n);
 	
 	for (i = 0; i < n; i++)
 	{

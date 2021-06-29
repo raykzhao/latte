@@ -45,7 +45,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	static POLY_FFT d[L];
 	static POLY_FFT k_red_fft;
 	static POLY_Z k_red;
-	static POLY_Z s_z, ks, z;
+	static POLY_Z ks, z;
 	
 	uint64_t i, j, k, p;
 	
@@ -109,7 +109,6 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	poly_fft_init(&k_red_fft, N);
 	poly_z_init(&k_red, N);
 	
-	poly_z_init(&s_z, N);
 	poly_z_init(&ks, N);
 	poly_z_init(&z, N);
 	
@@ -319,32 +318,19 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 			mpfr_round(tmp, mpc_realref(k_red_fft.poly[p]));
 			mpfr_get_z(k_red.poly[p], tmp, MPFR_RNDN);
 		}
-				
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[0][0].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		poly_mul_z64(&ks, &k_red, s->mat[0], N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_sub(G.poly[p], G.poly[p], ks.poly[p]);
 		}
-
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[0][1].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		
+		poly_mul_z64(&ks, &k_red, s->mat[0] + 1, N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_sub(F.poly[p], F.poly[p], ks.poly[p]);
 		}
-
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[0][2].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		
+		poly_mul_z64(&ks, &k_red, s->mat[0] + 2, N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_neg(z.poly[p], ks.poly[p]);
@@ -366,31 +352,19 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 			mpfr_get_z(k_red.poly[p], tmp, MPFR_RNDN);
 		}
 		
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[1][0].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		poly_mul_z64(&ks, &k_red, s->mat[1], N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_sub(G.poly[p], G.poly[p], ks.poly[p]);
 		}
-
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[1][1].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		
+		poly_mul_z64(&ks, &k_red, s->mat[1] + 1, N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_sub(F.poly[p], F.poly[p], ks.poly[p]);
 		}
-
-		for (p = 0; p < N; p++)
-		{
-			mpz_set_si(s_z.poly[p], s->mat[1][2].poly[p]);
-		}
-		poly_z_mul(&ks, &k_red, &s_z, N);
+		
+		poly_mul_z64(&ks, &k_red, s->mat[1] + 2, N);
 		for (p = 0; p < N; p++)
 		{
 			mpz_sub(z.poly[p], z.poly[p], ks.poly[p]);
@@ -451,7 +425,6 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	poly_fft_clear(&k_red_fft, N);
 	poly_z_clear(&k_red, N);
 
-	poly_z_clear(&s_z, N);
 	poly_z_clear(&ks, N);
 	poly_z_clear(&z, N);
 		

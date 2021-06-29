@@ -69,6 +69,6 @@ static inline void poly_fft_clear(POLY_FFT *a, const uint64_t n)
 	}
 }
 
-void poly_z_mul(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n);
+void poly_mul_zz(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n);
 
 #endif

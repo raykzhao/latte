@@ -133,8 +133,8 @@ static void field_norm(POLY_Z *out, const POLY_Z *a, const uint64_t n)
 		mpz_set(a_o.poly[i], a->poly[(i << 1) + 1]);
 	}
 	
-	poly_z_mul(out, &a_e, &a_e, n);
-	poly_z_mul(&tmp, &a_o, &a_o, n);
+	poly_mul_zz(out, &a_e, &a_e, n);
+	poly_mul_zz(&tmp, &a_o, &a_o, n);
 	
 	mpz_add(out->poly[0], out->poly[0], tmp.poly[n - 1]);
 	for (i = 1; i < n; i++)
@@ -168,7 +168,7 @@ static void lift(POLY_Z *out, const POLY_Z *g, const POLY_Z *F_prime, const uint
 		mpz_set(F_prime_x2.poly[i << 1], F_prime->poly[i]);
 	}
 	
-	poly_z_mul(out, &gx, &F_prime_x2, n);
+	poly_mul_zz(out, &gx, &F_prime_x2, n);
 	
 	poly_z_clear(&gx, n);
 	poly_z_clear(&F_prime_x2, n);
@@ -270,8 +270,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 			break;
 		}
 		
-		poly_z_mul(&fk, f, &k_poly, n);
-		poly_z_mul(&gk, g, &k_poly, n);
+		poly_mul_zz(&fk, f, &k_poly, n);
+		poly_mul_zz(&gk, g, &k_poly, n);
 		
 		for (i = 0; i < n; i++)
 		{
