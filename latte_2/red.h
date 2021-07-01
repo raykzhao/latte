@@ -22,18 +22,18 @@ static inline uint64_t con_add(const uint64_t x, const uint64_t q)
 	return x + ((-(x >> 63)) & q);
 }
 
-#define MONTGOMERY_FACTOR 4278194177
+#define MONTGOMERY_FACTOR 16773119
 #define MONTGOMERY_SHIFT 32
 #define MONTGOMERY_CONVERT_FACTOR 33546244
 #define MONTGOMERY_INV_FACTOR 1834688
 
 /* Montgomery reduction
- * Input: x < Q*R, where R=2^k
+ * Input: x < Q*R, where R=2^k and Q<R
  * Output: m = x*R^{-1} % Q
  * 
- * b = Q^{-1} % R
+ * b = -Q^{-1} % R
  * t = ((x % R)*b) % R
- * m = x / R - t * Q / R */
+ * m = (x + t * Q) / R */
 static inline uint64_t montgomery(uint64_t a, uint64_t b)
 {
 	uint64_t t;
@@ -42,8 +42,8 @@ static inline uint64_t montgomery(uint64_t a, uint64_t b)
 	t = a * b;
 	x = t;
 	y = ((uint64_t)x) * MONTGOMERY_FACTOR;
-
-	return con_add((t >> MONTGOMERY_SHIFT) - ((((uint64_t)y) * Q) >> MONTGOMERY_SHIFT), Q);
+	
+	return con_sub((t + ((uint64_t)y) * Q) >> MONTGOMERY_SHIFT, Q);
 }
 
 /* Modular inverse mod q */
