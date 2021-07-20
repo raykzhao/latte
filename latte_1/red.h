@@ -34,16 +34,21 @@ static inline uint64_t con_add(const uint64_t x, const uint64_t q)
  * b = -Q^{-1} % R
  * t = ((x % R)*b) % R
  * m = (x + t * Q) / R */
-static inline uint64_t montgomery(uint64_t a, uint64_t b)
+static inline uint64_t montgomery_core(uint64_t a, uint64_t b, const uint64_t q, const uint64_t montgomery_factor)
 {
 	uint64_t t;
 	uint32_t x, y;
 	
 	t = a * b;
 	x = t;
-	y = ((uint64_t)x) * MONTGOMERY_FACTOR;
+	y = ((uint64_t)x) * montgomery_factor;
 	
-	return con_sub((t + ((uint64_t)y) * Q) >> MONTGOMERY_SHIFT, Q);
+	return con_sub((t + ((uint64_t)y) * q) >> MONTGOMERY_SHIFT, q);
+}
+
+static inline uint64_t montgomery(uint64_t a, uint64_t b)
+{
+	return montgomery_core(a, b, Q, MONTGOMERY_FACTOR);
 }
 
 /* Modular inverse mod q */

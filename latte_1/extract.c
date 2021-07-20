@@ -78,7 +78,7 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 		}
 	}
 	
-	gram(&g, &fft_basis, l + 1, N);
+	gram(&g, &fft_basis, basis, l + 1, N);
 	
 	fft_ldl(&tree_root, tree_dim2, &g, l + 1, sigma);
 	

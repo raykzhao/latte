@@ -20,6 +20,11 @@ typedef struct
 	POLY_64 mat[L + 1][L + 1];
 } MAT_64;
 
+typedef struct
+{
+	POLY_Z mat[L + 1][L + 1];
+} MAT_Z;
+
 static inline void mat_fft_init(MAT_FFT *a, const uint64_t dim, const uint64_t n)
 {
 	uint64_t i, j;
@@ -46,6 +51,32 @@ static inline void mat_fft_clear(MAT_FFT *a, const uint64_t dim, const uint64_t 
 	}
 }
 
-void gram(MAT_FFT *out, const MAT_FFT *a, const uint64_t dim, const uint64_t n);
+static inline void mat_z_init(MAT_Z *a, const uint64_t dim, const uint64_t n)
+{
+	uint64_t i, j;
+	
+	for (i = 0; i < dim; i++)
+	{
+		for (j = 0; j < dim; j++)
+		{
+			poly_z_init(&(a->mat[i][j]), n);
+		}
+	}
+}
+
+static inline void mat_z_clear(MAT_Z *a, const uint64_t dim, const uint64_t n)
+{
+	uint64_t i, j;
+	
+	for (i = 0; i < dim; i++)
+	{
+		for (j = 0; j < dim; j++)
+		{
+			poly_z_clear(&(a->mat[i][j]), n);
+		}
+	}
+}
+
+void gram(MAT_FFT *out, const MAT_FFT *a, const MAT_64 *basis, const uint64_t dim, const uint64_t n);
 
 #endif
