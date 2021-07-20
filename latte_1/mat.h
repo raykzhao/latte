@@ -77,6 +77,6 @@ static inline void mat_z_clear(MAT_Z *a, const uint64_t dim, const uint64_t n)
 	}
 }
 
-void gram(MAT_FFT *out, const MAT_FFT *a, const MAT_64 *basis, const uint64_t dim, const uint64_t n);
+void gram(MAT_FFT *out, const MAT_64 *basis, const uint64_t dim, const uint64_t n);
 
 #endif

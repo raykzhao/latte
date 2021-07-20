@@ -36,7 +36,7 @@ static const uint64_t t1_inv_t2[RNS_D - 1] = {1431934294};
 static const uint64_t gram_rns_d[L] = {2};
 
 /* Compute the Gram matrix a * (a*)^T */
-void gram(MAT_FFT *out, const MAT_FFT *a, const MAT_64 *basis, const uint64_t dim, const uint64_t n)
+void gram(MAT_FFT *out, const MAT_64 *basis, const uint64_t dim, const uint64_t n)
 {
 	uint64_t i, j, k, p;
 	static MAT_64 ntt_basis[RNS_D], g_ntt[RNS_D];
