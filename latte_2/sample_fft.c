@@ -15,219 +15,102 @@
 #include <mpfr.h>
 #include <mpc.h>
 
-/* LDL from Falcon (for dim = 2) */
-static void ldl_dim2(POLY_FFT *l_dim2, POLY_FFT *d, const MAT_FFT *g, const uint64_t n)
-{
-	uint64_t p;
-	mpc_t tmp;
-	
-	mpc_init2(tmp, PREC);
-	
-	for (p = 0; p < n; p++)
-	{
-		mpc_set(d[0].poly[p], g->mat[0][0].poly[p], MPC_RNDNN);
-		mpc_set(d[1].poly[p], g->mat[1][1].poly[p], MPC_RNDNN);
-
-		mpc_div(l_dim2->poly[p], g->mat[1][0].poly[p], d[0].poly[p], MPC_RNDNN);
-
-		mpc_conj(tmp, l_dim2->poly[p], MPC_RNDNN);
-		mpc_mul(tmp, g->mat[1][0].poly[p], tmp, MPC_RNDNN);
-		mpc_sub(d[1].poly[p], d[1].poly[p], tmp, MPC_RNDNN);
-	}
-	
-	mpc_clear(tmp);
-}
-
-/* LDL from Falcon */
-static void ldl(MAT_FFT *l, POLY_FFT *d, const MAT_FFT *g, const uint64_t dim, const uint64_t n)
-{
-	uint64_t i, j, k, p;
-	mpc_t tmp;
-	static POLY_FFT l_tmp[L];
-	
-	mpc_init2(tmp, PREC);
-	
-	for (j = 0; j < dim - 1; j++)
-	{
-		poly_fft_init(l_tmp + j, n);
-	}
-	
-	for (i = 0; i < dim; i++)
-	{
-		for (p = 0; p < n; p++)
-		{
-			mpc_set(d[i].poly[p], g->mat[i][i].poly[p], MPC_RNDNN);
-		}
-		
-		for (j = 0; j < i; j++)
-		{
-			for (p = 0; p < n; p++)
-			{
-				mpc_set(l->mat[i][j].poly[p], g->mat[i][j].poly[p], MPC_RNDNN);
-			}
-			
-			for (k = 0; k < j; k++)
-			{
-				for (p = 0; p < n; p++)
-				{
-					mpc_conj(tmp, l->mat[j][k].poly[p], MPC_RNDNN);
-					mpc_mul(tmp, l->mat[i][k].poly[p], tmp, MPC_RNDNN);
-					mpc_sub(l->mat[i][j].poly[p], l->mat[i][j].poly[p], tmp, MPC_RNDNN);
-				}
-			}
-			
-			for (p = 0; p < n; p++)
-			{
-				mpc_div(l_tmp[j].poly[p], l->mat[i][j].poly[p], d[j].poly[p], MPC_RNDNN);
-				mpc_conj(tmp, l_tmp[j].poly[p], MPC_RNDNN);
-				mpc_mul(tmp, l->mat[i][j].poly[p], tmp, MPC_RNDNN);
-				mpc_sub(d[i].poly[p], d[i].poly[p], tmp, MPC_RNDNN);
-			}
-		}
-		
-		for (j = 0; j < i; j++)
-		{
-			for (p = 0; p < n; p++)
-			{
-				mpc_set(l->mat[i][j].poly[p], l_tmp[j].poly[p], MPC_RNDNN);
-			}
-		}
-	}
-	
-	mpc_clear(tmp);
-
-	for (j = 0; j < dim - 1; j++)
-	{
-		poly_fft_init(l_tmp + j, n);
-	}
-}
+static const uint64_t q2 = Q * Q;
 
 /* ffLDL from Falcon (for dim = 2) */
-static void fft_ldl_dim2(POLY_FFT *tree_dim2, const MAT_FFT *g, const uint64_t n, const mpfr_t sigma)
+static void fft_ldl_dim2(POLY_FFT *tree_dim2, const POLY_R *d, const POLY_R *d0, const POLY_FFT *d1, const uint64_t n, const mpfr_t sigma)
 {
 	uint64_t p;
-	uint64_t n2 = n >> 1;
 	
-	static MAT_FFT g_i;
-	static POLY_FFT d0, d1;
-	static uint64_t initialised; 
-
-	POLY_FFT d[2];
+	POLY_R d_new[2];
+	static POLY_R d0_new;
+	static POLY_FFT d1_new;
+	static uint64_t initialised;
 	
 	mpfr_t tmp;
 	
+	mpfr_init2(tmp, PREC);
+
 	if (n == 1)
 	{
-		mpfr_init2(tmp, PREC);
-
-		mpfr_sqrt(tmp, mpc_realref(g->mat[0][0].poly[0]), MPFR_RNDN);
+		mpfr_sqrt(tmp, d0->poly[0], MPFR_RNDN);
 		mpfr_div(tmp, sigma, tmp, MPFR_RNDN);
 		mpc_set_fr(tree_dim2->poly[0], tmp, MPC_RNDNN);
-
-		mpfr_clear(tmp);
 	}
 	else
 	{
 		if (!initialised)
 		{
-			mat_fft_init(&g_i, 2, N >> 2);
-					
-			poly_fft_init(&d0, N >> 2);
-			poly_fft_init(&d1, N >> 2);
+			poly_r_init(&d0_new, N >> 2);
+			poly_fft_init(&d1_new, N >> 2);
 			
 			initialised = 1;
 		}
+		poly_r_init(d_new, n);
+		poly_r_init(d_new + 1, n);
 		
-		poly_fft_init(d, n);
-		poly_fft_init(d + 1, n);
-		
-		ldl_dim2(tree_dim2, d, g, n);
-		
-		split_fft(&d0, &d1, d, n);
-		
-		for (p = 0; p < n2; p++)
+		for (p = 0; p < n; p++)
 		{
-			mpc_set(g_i.mat[0][0].poly[p], d0.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[0][1].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_conj(g_i.mat[1][0].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[1][1].poly[p], d0.poly[p], MPC_RNDNN);
+			mpfr_set(d_new[0].poly[p], d0->poly[p], MPFR_RNDN);
+			mpc_conj(tree_dim2->poly[p], d1->poly[p], MPC_RNDNN);
+			mpc_div_fr(tree_dim2->poly[p], tree_dim2->poly[p], d_new[0].poly[p], MPC_RNDNN);
+			mpfr_mul(tmp, d->poly[p << 1], d->poly[(p << 1) + 1], MPFR_RNDN);
+			mpfr_div(d_new[1].poly[p], tmp, d_new[0].poly[p], MPFR_RNDN);
 		}
 		
-		fft_ldl_dim2(tree_dim2 + 1, &g_i, n2, sigma);
-		
-		split_fft(&d0, &d1, d + 1, n);
-		
-		for (p = 0; p < n2; p++)
-		{
-			mpc_set(g_i.mat[0][0].poly[p], d0.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[0][1].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_conj(g_i.mat[1][0].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[1][1].poly[p], d0.poly[p], MPC_RNDNN);
-		}
-		
-		fft_ldl_dim2(tree_dim2 + n, &g_i, n2, sigma);
-		
-		poly_fft_clear(d, n);
-		poly_fft_clear(d + 1, n);
+		split_fft_r(&d0_new, &d1_new, d_new, n);
+		fft_ldl_dim2(tree_dim2 + 1, d_new, &d0_new, &d1_new, n >> 1, sigma);
+
+		split_fft_r(&d0_new, &d1_new, d_new + 1, n);
+		fft_ldl_dim2(tree_dim2 + n, d_new + 1, &d0_new, &d1_new, n >> 1, sigma);
+
+		poly_r_clear(d_new, n);
+		poly_r_clear(d_new + 1, n);
 		
 		if (n == N >> 1)
 		{
-			mat_fft_clear(&g_i, 2, N >> 2);
-					
-			poly_fft_clear(&d0, N >> 2);
-			poly_fft_clear(&d1, N >> 2);
+			poly_r_clear(&d0_new, N >> 2);
+			poly_fft_clear(&d1_new, N >> 2);
 			
 			initialised = 0;
 		}
 	}
+
+	mpfr_clear(tmp);
 }
 
-/* ffLDL from Falcon 
+/* ffLDL from Falcon (dim = 2, top level)
  * since all nodes except the root only have L[1, 0], we separate the root from the remaining of the tree to save space */
 void fft_ldl(MAT_FFT *tree_root, POLY_FFT *tree_dim2, const MAT_FFT *g, const uint64_t dim, const mpfr_t sigma)
 {
-	uint64_t i, p;
+	uint64_t p;
+	static POLY_R d[2];
+	static POLY_R d0;
+	static POLY_FFT d1;
 	
-	static MAT_FFT g_i;
-	static POLY_FFT d0, d1;
-	
-	static POLY_FFT d[L + 1];
-	
-	mat_fft_init(&g_i, 2, N >> 1);
-			
-	poly_fft_init(&d0, N >> 1);
+	poly_r_init(d, N);
+	poly_r_init(d + 1, N);
+
+	poly_r_init(&d0, N >> 1);
 	poly_fft_init(&d1, N >> 1);
 	
-	for (i = 0; i < dim; i++)
+	for (p = 0; p < N; p++)
 	{
-		poly_fft_init(d + i, N);
+		mpc_real(d[0].poly[p], g->mat[0][0].poly[p], MPFR_RNDN);
+		mpc_div_fr(tree_root->mat[1][0].poly[p], g->mat[1][0].poly[p], d[0].poly[p], MPC_RNDNN);
+		mpfr_ui_div(d[1].poly[p], q2, d[0].poly[p], MPFR_RNDN);
 	}
 	
-	ldl(tree_root, d, g, dim, N);
-	
-	for (i = 0; i < dim; i++)
-	{
-		split_fft(&d0, &d1, d + i, N);
-		
-		for (p = 0; p < N >> 1; p++)
-		{
-			mpc_set(g_i.mat[0][0].poly[p], d0.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[0][1].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_conj(g_i.mat[1][0].poly[p], d1.poly[p], MPC_RNDNN);
-			mpc_set(g_i.mat[1][1].poly[p], d0.poly[p], MPC_RNDNN);
-		}
-		
-		fft_ldl_dim2(tree_dim2 + i * (N - 1), &g_i, N >> 1, sigma);
-	}
-		
-	for (i = 0; i < dim; i++)
-	{
-		poly_fft_clear(d + i, N);
-	}
-	
-	mat_fft_clear(&g_i, 2, N >> 1);
-	
-	poly_fft_clear(&d0, N >> 1);
+	split_fft_r(&d0, &d1, d, N);
+	fft_ldl_dim2(tree_dim2, d, &d0, &d1, N >> 1, sigma);
+
+	split_fft_r(&d0, &d1, d + 1, N);
+	fft_ldl_dim2(tree_dim2 + N - 1, d + 1, &d0, &d1, N >> 1, sigma);
+
+	poly_r_clear(d, N);
+	poly_r_clear(d + 1, N);
+
+	poly_r_clear(&d0, N >> 1);
 	poly_fft_clear(&d1, N >> 1);
 }
 
