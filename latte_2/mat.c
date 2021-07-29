@@ -77,7 +77,7 @@ void gram(MAT_FFT *out, const MAT_64 *basis, const uint64_t dim, const uint64_t 
 		{
 			for (p = 0; p < N; p++)
 			{
-				g_ntt[0].mat[i][j].poly[p] += rns_q[0] * montgomery_core(t1_inv_t2, con_add(g_ntt[1].mat[i][j].poly[p] - con_sub(g_ntt[0].mat[i][j].poly[p], rns_q[1]), rns_q[1]), rns_q[1], rns_montgomery_factor[1]);
+				g_ntt[0].mat[i][j].poly[p] += rns_q[0] * montgomery_core(t1_inv_t2, con_add(con_add(g_ntt[1].mat[i][j].poly[p] - g_ntt[0].mat[i][j].poly[p], rns_q[1]), rns_q[1]), rns_q[1], rns_montgomery_factor[1]);
 
 				if (g_ntt[0].mat[i][j].poly[p] > (t1 >> 1))
 				{
