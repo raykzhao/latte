@@ -65,7 +65,20 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	mpfr_set_str(sigma, sigma_str[l], 10, MPFR_RNDN);
 	mpfr_set_zero(center, 0);
 	
-	gram(&g, basis, l + 1, N);
+	for (i = 0; i < l + 1; i++)
+	{
+		for (j = 0; j < l + 1; j++)
+		{
+			for (p = 0; p < N; p++)
+			{
+				mpc_set_si(fft_basis.mat[i][j].poly[p], basis->mat[i][j].poly[p], MPC_RNDNN);
+			}
+			
+			fft(&(fft_basis.mat[i][j]), N);
+		}
+	}
+	
+	gram(&g, &fft_basis, l + 1, N);
 	
 	fft_ldl(&tree_root, tree_dim2, &g, l + 1, sigma);
 	
@@ -90,19 +103,6 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	}
 	
 	fft(&c, N);
-	
-	for (i = 0; i < l + 1; i++)
-	{
-		for (j = 0; j < l + 1; j++)
-		{
-			for (p = 0; p < N; p++)
-			{
-				mpc_set_si(fft_basis.mat[i][j].poly[p], basis->mat[i][j].poly[p], MPC_RNDNN);
-			}
-			
-			fft(&(fft_basis.mat[i][j]), N);
-		}
-	}
 	
 	/* Sample preimage */
 	sample_preimage(s, &fft_basis, &tree_root, tree_dim2, &c, l + 1);

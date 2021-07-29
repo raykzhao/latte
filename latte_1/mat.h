@@ -46,6 +46,6 @@ static inline void mat_fft_clear(MAT_FFT *a, const uint64_t dim, const uint64_t 
 	}
 }
 
-void gram(MAT_FFT *out, const MAT_64 *basis, const uint64_t dim, const uint64_t n);
+void gram(MAT_FFT *out, const MAT_FFT *a, const uint64_t dim, const uint64_t n);
 
 #endif
