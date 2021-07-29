@@ -1161,6 +1161,31 @@ void split_fft(POLY_FFT *f0, POLY_FFT *f1, const POLY_FFT *a, const uint64_t n)
 	}
 }
 
+/* splitfft when input is real */
+void split_fft_r(POLY_R *f0, POLY_FFT *f1, const POLY_R *a, const uint64_t n)
+{
+	uint64_t i, j;
+	mpfr_t tmp;
+	
+	fft_init();
+	
+	mpfr_set(f0->poly[0], a->poly[0], MPFR_RNDN);
+	mpc_set_ui(f1->poly[0], 0, MPC_RNDNN);
+	
+	mpfr_init2(tmp, PREC);
+	for (i = 0; i < (n >> 1); i++)
+	{
+		j = i << 1;
+		
+		mpfr_add(f0->poly[i], a->poly[j], a->poly[j + 1], MPFR_RNDN);
+		mpfr_div_2ui(f0->poly[i], f0->poly[i], 1, MPFR_RNDN);
+		mpfr_sub(tmp, a->poly[j], a->poly[j + 1], MPFR_RNDN);
+		mpfr_div_2ui(tmp, tmp, 1, MPFR_RNDN);
+		mpc_mul_fr(f1->poly[i], ifft_zeta[(n >> 1) + i], tmp, MPC_RNDNN);
+	}
+	mpfr_clear(tmp);
+}
+
 /* mergefft from Falcon */
 void merge_fft(POLY_FFT *a, const POLY_FFT *f0, const POLY_FFT *f1, const uint64_t n)
 {

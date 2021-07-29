@@ -29,6 +29,11 @@ typedef struct
 	int64_t poly[N];
 } POLY_64;
 
+typedef struct
+{
+	mpfr_t poly[N];
+} POLY_R;
+
 static inline void poly_z_init(POLY_Z *a, const uint64_t n)
 {
 	uint64_t i;
@@ -66,6 +71,26 @@ static inline void poly_fft_clear(POLY_FFT *a, const uint64_t n)
 	for (i = 0; i < n; i++)
 	{
 		mpc_clear(a->poly[i]);
+	}
+}
+
+static inline void poly_r_init(POLY_R *a, const uint64_t n)
+{
+	uint64_t i;
+	
+	for (i = 0; i < n; i++)
+	{
+		mpfr_init2(a->poly[i], PREC);
+	}
+}
+
+static inline void poly_r_clear(POLY_R *a, const uint64_t n)
+{
+	uint64_t i;
+	
+	for (i = 0; i < n; i++)
+	{
+		mpfr_clear(a->poly[i]);
 	}
 }
 
