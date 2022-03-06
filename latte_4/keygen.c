@@ -190,7 +190,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	mpfr_t k_round;
 	static POLY_Z k_poly, fk, gk;
 	
-	uint64_t check;
+	mpz_t norm_old, norm_new;
+	static POLY_Z F_new, G_new;
 	
 	poly_fft_init(&f_hi, n);
 	poly_fft_init(&g_hi, n);
@@ -204,6 +205,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	
 	poly_fft_init(&F_hi, n);
 	poly_fft_init(&G_hi, n);
+	
+	mpz_inits(norm_old, norm_new, NULL);
 	
 	for (i = 0; i < n; i++)
 	{
@@ -227,6 +230,9 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	{
 		mpz_set(F_red->poly[i], F->poly[i]);
 		mpz_set(G_red->poly[i], G->poly[i]);
+		
+		mpz_addmul(norm_old, F_red->poly[i], F_red->poly[i]);
+		mpz_addmul(norm_old, G_red->poly[i], G_red->poly[i]);
 	}
 	
 	mpfr_init2(k_round, PREC);
@@ -234,6 +240,9 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	
 	poly_z_init(&fk, n);
 	poly_z_init(&gk, n);
+	
+	poly_z_init(&F_new, n);
+	poly_z_init(&G_new, n);
 	
 	while (1)
 	{
@@ -256,18 +265,10 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		
 		ifft(&k_fft, n);
 		
-		check = 0;
 		for (i = 0; i < n; i++)
 		{
 			mpfr_round(k_round, mpc_realref(k_fft.poly[i]));
 			mpfr_get_z(k_poly.poly[i], k_round, MPFR_RNDN);
-			
-			check |= mpz_sgn(k_poly.poly[i]);
-		}
-		
-		if (!check)
-		{
-			break;
 		}
 		
 		poly_mul_zz(&fk, f, &k_poly, n);
@@ -275,9 +276,26 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		
 		for (i = 0; i < n; i++)
 		{
-			mpz_sub(F_red->poly[i], F_red->poly[i], fk.poly[i]);
-			mpz_sub(G_red->poly[i], G_red->poly[i], gk.poly[i]);
+			mpz_sub(F_new.poly[i], F_red->poly[i], fk.poly[i]);
+			mpz_sub(G_new.poly[i], G_red->poly[i], gk.poly[i]);
+			
+			mpz_addmul(norm_new, F_new.poly[i], F_new.poly[i]);
+			mpz_addmul(norm_new, G_new.poly[i], G_new.poly[i]);
 		}
+		
+		if (mpz_cmp(norm_old, norm_new) <= 0)
+		{
+			break;
+		}
+		
+		for (i = 0; i < n; i++)
+		{
+			mpz_set(F_red->poly[i], F_new.poly[i]);
+			mpz_set(G_red->poly[i], G_new.poly[i]);
+		}
+		
+		mpz_set(norm_old, norm_new);
+		mpz_set_ui(norm_new, 0);
 	}
 	
 	poly_fft_clear(&f_hi, n);
@@ -298,6 +316,11 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	poly_z_clear(&k_poly, n);
 	poly_z_clear(&fk, n);
 	poly_z_clear(&gk, n);
+	
+	poly_z_clear(&F_new, n);
+	poly_z_clear(&G_new, n);
+
+	mpz_clears(norm_old, norm_new, NULL);
 }
 
 /* NTRUSolve from Falcon */
