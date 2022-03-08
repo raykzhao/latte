@@ -22,7 +22,7 @@ static mpfr_t sqrt_pi2;
 
 #define BOX_MULLER_BYTES (PREC * 2 / 8)
 #define COMP_ENTRY_SIZE (PREC / 8)
-#define DISCRETE_BYTES (1 + 2 * COMP_ENTRY_SIZE)
+#define DISCRETE_BYTES (2 * COMP_ENTRY_SIZE)
 
 static uint64_t sample_z_initialised;
 
