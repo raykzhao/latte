@@ -14,8 +14,8 @@
 #include <x86intrin.h>
 
 /* Constants used by COSAC */
-static const char pi2_str[PREC] = "6.283185307179586476925286766559005768394338798750211641949889184615632812572";
-static const char sqrt_pi2_str[PREC] = "2.506628274631000502415765284811045253006986740609938316629923576342293654608";
+static const char pi2_str[PREC] = "6.2831853071795864769252868";
+static const char sqrt_pi2_str[PREC] = "2.5066282746310005024157653";
 
 static mpfr_t pi2;
 static mpfr_t sqrt_pi2;
@@ -109,6 +109,16 @@ static void sample_z_init()
 	}
 }
 
+static inline uint64_t load_24(const unsigned char *x)
+{
+	return ((uint64_t)(*x)) | (((uint64_t)(*(x + 1))) << 8) | (((uint64_t)(*(x + 2))) << 16);
+}
+
+static inline uint64_t load_64(const unsigned char *x)
+{
+	return ((uint64_t)(*x)) | (((uint64_t)(*(x + 1))) << 8) | (((uint64_t)(*(x + 2))) << 16) | (((uint64_t)(*(x + 3))) << 24) | (((uint64_t)(*(x + 4))) << 32) | (((uint64_t)(*(x + 5))) << 40) | (((uint64_t)(*(x + 6))) << 48) | (((uint64_t)(*(x + 7))) << 56);
+}
+
 /* New COSAC sampler. 
  * This is the sampling algorithm from:
  * Shuo Sun, Yongbin Zhou, Yunfeng Ji, Rui Zhang, & Yang Tao. (2021). Generic, Efficient and Isochronous Gaussian Sampling over the Integers. 
@@ -128,7 +138,7 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 	int64_t cmp1;
 	uint64_t head = 2;
 
-	uint64_t r_bm[BOX_MULLER_BYTES / 8];
+	unsigned char r_bm[BOX_MULLER_BYTES];
 
 	mpfr_t r1, r2;
 	mpfr_t norm[2];
@@ -155,13 +165,9 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 	
 	fastrandombytes(r, COMP_ENTRY_SIZE);
 	
-	mpfr_set_ui(comp, ((uint64_t *)r)[3], MPFR_RNDN);
+	mpfr_set_ui(comp, load_24(r + 8), MPFR_RNDN);
 	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[2], MPFR_RNDN);
-	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[1], MPFR_RNDN);
-	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[0], MPFR_RNDN);
+	mpfr_add_ui(comp, comp, load_64(r), MPFR_RNDN);
 	mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
 	
 	if (mpfr_less_p(comp, rc))
@@ -184,22 +190,14 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 				
 				fastrandombytes((unsigned char *)r_bm, BOX_MULLER_BYTES);
 				
-				mpfr_set_ui(r1, r_bm[3], MPFR_RNDN);
+				mpfr_set_ui(r1, load_24(r_bm + 8), MPFR_RNDN);
 				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[2], MPFR_RNDN);
-				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[1], MPFR_RNDN);
-				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[0], MPFR_RNDN);
+				mpfr_add_ui(r1, r1, load_64(r_bm), MPFR_RNDN);
 				mpfr_div_2ui(r1, r1, PREC, MPFR_RNDN);
-				
-				mpfr_set_ui(r2, r_bm[7], MPFR_RNDN);
+
+				mpfr_set_ui(r2, load_24(r_bm + 19), MPFR_RNDN);
 				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[6], MPFR_RNDN);
-				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[5], MPFR_RNDN);
-				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[4], MPFR_RNDN);
+				mpfr_add_ui(r2, r2, load_64(r_bm + 11), MPFR_RNDN);
 				mpfr_div_2ui(r2, r2, PREC, MPFR_RNDN);
 				
 				mpfr_log(r1, r1, MPFR_RNDN);
@@ -229,13 +227,9 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 			mpfr_div(rej, rej, sigma2, MPFR_RNDN);
 			mpfr_exp(rej, rej, MPFR_RNDN);
 			
-			mpfr_set_ui(comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 3], MPFR_RNDN);
+			mpfr_set_ui(comp, load_24(r + i * COMP_ENTRY_SIZE + 8), MPFR_RNDN);
 			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 2], MPFR_RNDN);
-			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 1], MPFR_RNDN);
-			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8)], MPFR_RNDN);
+			mpfr_add_ui(comp, comp, load_64(r + i * COMP_ENTRY_SIZE), MPFR_RNDN);
 			mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
 			
 			if (mpfr_less_p(comp, rej))
