@@ -54,15 +54,21 @@ static inline void poly_z_clear(POLY_Z *a, const uint64_t n)
 	}
 }
 
-static inline void poly_fft_init(POLY_FFT *a, const uint64_t n)
+static inline void poly_fft_init_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
 {
 	uint64_t i;
 	
 	for (i = 0; i < n; i++)
 	{
-		mpc_init2(a->poly[i], PREC);
+		mpc_init2(a->poly[i], prec);
 	}
 }
+
+static inline void poly_fft_init(POLY_FFT *a, const uint64_t n)
+{
+	poly_fft_init_prec(a, n, PREC);
+}
+
 
 static inline void poly_fft_clear(POLY_FFT *a, const uint64_t n)
 {
