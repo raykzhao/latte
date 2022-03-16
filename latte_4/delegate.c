@@ -238,7 +238,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 		{
 			continue;
 		}
-	} while (tower_solver(&F, &G, &f, &g, N, reduce_k_prec[l]));
+	} while (tower_solver(&F, &G, &f, &g, N, l));
 	
 	for (i = 0; i < l + 1; i++)
 	{

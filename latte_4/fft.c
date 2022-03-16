@@ -2064,20 +2064,31 @@ static const char fft_zeta_str[N][FFT_PREC] = {"(1 0)",
 static mpc_t fft_zeta[N];
 static mpc_t ifft_zeta[N];
 
+static mpc_t fft_zeta_reduce_k[L][N];
+static mpc_t ifft_zeta_reduce_k[L][N];
+
 static uint64_t fft_initialised;
 
 static void fft_init()
 {
-	uint64_t i;
+	uint64_t i, j;
 	
 	if (!fft_initialised)
 	{
 		for (i = 0; i < N; i++)
 		{
-			mpc_init2(fft_zeta[i], FFT_PREC);
-			mpc_init2(ifft_zeta[i], FFT_PREC);
+			mpc_init2(fft_zeta[i], PREC);
+			mpc_init2(ifft_zeta[i], PREC);
 			mpc_set_str(fft_zeta[i], fft_zeta_str[i], 10, MPC_RNDNN);
 			mpc_conj(ifft_zeta[i], fft_zeta[i], MPC_RNDNN);
+			
+			for (j = 0; j < L; j++)
+			{
+				mpc_init2(fft_zeta_reduce_k[j][i], reduce_k_prec[j]);
+				mpc_init2(ifft_zeta_reduce_k[j][i], reduce_k_prec[j]);
+				mpc_set_str(fft_zeta_reduce_k[j][i], fft_zeta_str[i], 10, MPC_RNDNN);
+				mpc_conj(ifft_zeta_reduce_k[j][i], fft_zeta_reduce_k[j][i], MPC_RNDNN);
+			}
 		}
 		
 		fft_initialised = 1;
@@ -2085,7 +2096,7 @@ static void fft_init()
 }
 
 /* Cooley-Tukey FFT */
-void fft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
+static void fft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec, const mpc_t *fft_zeta)
 {
 	uint64_t t = n;
 	uint64_t m, i, j;
@@ -2120,7 +2131,7 @@ void fft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
 }
 
 /* Gentleman-Sande IFFT */
-void ifft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
+static void ifft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec, const mpc_t *ifft_zeta)
 {
 	uint64_t t = 1;
 	uint64_t m, i, j;
@@ -2165,12 +2176,22 @@ void ifft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
 
 void fft(POLY_FFT *a, const uint64_t n)
 {
-	fft_prec(a, n, PREC);
+	fft_prec(a, n, PREC, fft_zeta);
 }
 
 void ifft(POLY_FFT *a, const uint64_t n)
 {
-	ifft_prec(a, n, PREC);
+	ifft_prec(a, n, PREC, ifft_zeta);
+}
+
+void fft_reduce_k(POLY_FFT *a, const uint64_t n, const uint64_t l)
+{
+	fft_prec(a, n, reduce_k_prec[l], fft_zeta_reduce_k[l]);
+}
+
+void ifft_reduce_k(POLY_FFT *a, const uint64_t n, const uint64_t l)
+{
+	ifft_prec(a, n, reduce_k_prec[l], ifft_zeta_reduce_k[l]);
 }
 
 /* splitfft from Falcon */

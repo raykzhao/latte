@@ -175,7 +175,7 @@ static void lift(POLY_Z *out, const POLY_Z *g, const POLY_Z *F_prime, const uint
 }
 
 /* length reduction */
-static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z *g, const POLY_Z *F, const POLY_Z *G, const uint64_t n, const uint64_t prec)
+static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z *g, const POLY_Z *F, const POLY_Z *G, const uint64_t n, const uint64_t l)
 {
 	uint64_t i;
 	
@@ -193,18 +193,18 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	mpz_t norm_old, norm_new;
 	static POLY_Z F_new, G_new;
 	
-	poly_fft_init_prec(&f_hi, n, prec);
-	poly_fft_init_prec(&g_hi, n, prec);
+	poly_fft_init_prec(&f_hi, n, reduce_k_prec[l]);
+	poly_fft_init_prec(&g_hi, n, reduce_k_prec[l]);
 	
-	poly_fft_init_prec(&f_hi_adj, n, prec);
-	poly_fft_init_prec(&g_hi_adj, n, prec);
+	poly_fft_init_prec(&f_hi_adj, n, reduce_k_prec[l]);
+	poly_fft_init_prec(&g_hi_adj, n, reduce_k_prec[l]);
 	
-	poly_fft_init_prec(&k_denom, n, prec);
+	poly_fft_init_prec(&k_denom, n, reduce_k_prec[l]);
 	
-	poly_fft_init_prec(&k_fft, n, prec);
+	poly_fft_init_prec(&k_fft, n, reduce_k_prec[l]);
 	
-	poly_fft_init_prec(&F_hi, n, prec);
-	poly_fft_init_prec(&G_hi, n, prec);
+	poly_fft_init_prec(&F_hi, n, reduce_k_prec[l]);
+	poly_fft_init_prec(&G_hi, n, reduce_k_prec[l]);
 	
 	mpz_inits(norm_old, norm_new, NULL);
 	
@@ -214,8 +214,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		mpc_set_z(g_hi.poly[i], g->poly[i], MPC_RNDNN);
 	}
 	
-	fft_prec(&f_hi, n, prec);
-	fft_prec(&g_hi, n, prec);
+	fft_reduce_k(&f_hi, n, l);
+	fft_reduce_k(&g_hi, n, l);
 	
 	for (i = 0; i < n; i++)
 	{
@@ -235,7 +235,7 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		mpz_addmul(norm_old, G_red->poly[i], G_red->poly[i]);
 	}
 	
-	mpfr_init2(k_round, prec);
+	mpfr_init2(k_round, reduce_k_prec[l]);
 	poly_z_init(&k_poly, n);
 	
 	poly_z_init(&fk, n);
@@ -252,8 +252,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 			mpc_set_z(G_hi.poly[i], G_red->poly[i], MPC_RNDNN);
 		}
 		
-		fft_prec(&F_hi, n, prec);
-		fft_prec(&G_hi, n, prec);
+		fft_reduce_k(&F_hi, n, l);
+		fft_reduce_k(&G_hi, n, l);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -263,7 +263,7 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 			mpc_div(k_fft.poly[i], k_fft.poly[i], k_denom.poly[i], MPC_RNDNN);
 		}
 		
-		ifft_prec(&k_fft, n, prec);
+		ifft_reduce_k(&k_fft, n, l);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -324,7 +324,7 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 }
 
 /* NTRUSolve from Falcon */
-int64_t tower_solver(POLY_Z *F, POLY_Z *G, const POLY_Z *f, const POLY_Z *g, const uint64_t n, const uint64_t prec)
+int64_t tower_solver(POLY_Z *F, POLY_Z *G, const POLY_Z *f, const POLY_Z *g, const uint64_t n, const uint64_t l)
 {
 	mpz_t d, u, v;
 	
@@ -378,14 +378,14 @@ int64_t tower_solver(POLY_Z *F, POLY_Z *G, const POLY_Z *f, const POLY_Z *g, con
 		field_norm(&f_prime, f, n2);
 		field_norm(&g_prime, g, n2);
 		
-		ret = tower_solver(&F_prime, &G_prime, &f_prime, &g_prime, n2, prec);
+		ret = tower_solver(&F_prime, &G_prime, &f_prime, &g_prime, n2, l);
 		
 		if (!ret)
 		{
 			lift(&F_unred, g, &F_prime, n);
 			lift(&G_unred, f, &G_prime, n);
 			
-			reduce_k(F, G, f, g, &F_unred, &G_unred, n, prec);
+			reduce_k(F, G, f, g, &F_unred, &G_unred, n, l);
 		}
 		
 		poly_z_clear(&f_prime, n2);
@@ -442,7 +442,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		}
 		
 		/* Find F, G such that f * G - g * F = q */
-		if (tower_solver(&F_z, &G_z, &f_z, &g_z, N, reduce_k_prec[0]))
+		if (tower_solver(&F_z, &G_z, &f_z, &g_z, N, 0))
 		{
 			continue;
 		}
