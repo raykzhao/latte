@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include "poly.h"
 
+void fft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec);
+void ifft_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec);
 void fft(POLY_FFT *a, const uint64_t n);
 void ifft(POLY_FFT *a, const uint64_t n);
 void split_fft(POLY_FFT *f0, POLY_FFT *f1, const POLY_FFT *a, const uint64_t n);

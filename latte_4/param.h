@@ -15,4 +15,7 @@ static const char sigma_str[L + 1][PREC] = {"9583.7471944500068780694380", "7131
 
 static const char norm_str[L][PREC] = {"376210269336.07783606747078", "3124915676658988.2977945632"};
 
+static const uint64_t reduce_k_prec[L] = {512, 1536};
+#define FFT_PREC 1536
+
 #endif
