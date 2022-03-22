@@ -66,64 +66,53 @@ static void karatsuba_zz(mpz_t *out, const mpz_t *a, const mpz_t *b, const uint6
 	}
 }
 
-static void karatsuba_z64(mpz_t *out, const mpz_t *a, const int64_t *b, const uint64_t n)
+static void karatsuba_6464(int64_t *out, const int64_t *a, const int64_t *b, const uint64_t n)
 {
-	mpz_t ax[N >> 1];
+	int64_t ax[N >> 1];
 	int64_t bx[N >> 1];
-	mpz_t axbx[N];
-	mpz_t tmp;
+	int64_t axbx[N];
+	int64_t tmp;
 	
 	uint64_t i, j;
 	uint64_t n2 = n >> 1;
 	
 	if (n <= 16)
 	{
-		mpz_init(tmp);
-		
 		for (i = 0; i < (n << 1); i++)
 		{
-			mpz_set_ui(out[i], 0);
+			out[i] = 0;
 		}
 		
 		for (i = 0; i < n; i++)
 		{
 			for (j = 0; j < n; j++)
 			{
-				mpz_mul_si(tmp, a[i], b[j]);
-				mpz_add(out[i + j], out[i + j], tmp);
+				tmp = a[i] * b[j];
+				out[i + j] = out[i + j] + tmp;
 			}
 		}
-		
-		mpz_clear(tmp);
 	}
 	else
 	{
 		for (i = 0; i < n2; i++)
 		{
-			mpz_inits(ax[i], axbx[i], axbx[i + n2], NULL);
-			
-			mpz_add(ax[i], a[i], a[i + n2]);
+			ax[i] = a[i] + a[i + n2];
 			bx[i] = b[i] + b[i + n2];
 		}
 		
-		karatsuba_z64(out, a, b, n2);
-		karatsuba_z64(out + n, a + n2, b + n2, n2);
-		karatsuba_z64(axbx, ax, bx, n2);
+		karatsuba_6464(out, a, b, n2);
+		karatsuba_6464(out + n, a + n2, b + n2, n2);
+		karatsuba_6464(axbx, ax, bx, n2);
 		
 		for (i = 0; i < n; i++)
 		{
-			mpz_sub(axbx[i], axbx[i], out[i]);
-			mpz_sub(axbx[i], axbx[i], out[i + n]);
+			axbx[i] = axbx[i] - out[i];
+			axbx[i] = axbx[i] - out[i + n];
 		}
 		
 		for (i = 0; i < n; i++)
 		{
-			mpz_add(out[i + n2], out[i + n2], axbx[i]);
-		}
-		
-		for (i = 0; i < n2; i++)
-		{
-			mpz_clears(ax[i], axbx[i], axbx[i + n2], NULL);
+			out[i + n2] = out[i + n2] + axbx[i];
 		}
 	}
 }
@@ -153,26 +142,16 @@ void poly_mul_zz(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n
 	}
 }
 
-void poly_mul_z64(POLY_Z *out, const POLY_Z *a, const POLY_64 *b, const uint64_t n)
+void poly_mul_6464(POLY_64 *out, const POLY_64 *a, const POLY_64 *b, const uint64_t n)
 {
-	static mpz_t tmp[N << 1];
+	static int64_t tmp[N << 1];
 	
 	uint64_t i;
 	
-	for (i = 0; i < (n << 1); i++)
-	{
-		mpz_init(tmp[i]);
-	}
-	
-	karatsuba_z64(tmp, a->poly, b->poly, n);
+	karatsuba_6464(tmp, a->poly, b->poly, n);
 	
 	for (i = 0; i < n; i++)
 	{
-		mpz_sub(out->poly[i], tmp[i], tmp[i + n]);
-	}
-	
-	for (i = 0; i < (n << 1); i++)
-	{
-		mpz_clear(tmp[i]);
+		out->poly[i] = tmp[i] - tmp[i + n];
 	}
 }

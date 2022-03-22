@@ -10,9 +10,7 @@
 #include <stdint.h>
 #include "mat.h"
 
-#include <mpfr.h>
-
-void fft_ldl(MAT_FFT *tree_root, POLY_FFT *tree_dim2, const MAT_FFT *g, const uint64_t dim, const mpfr_t sigma);
+void fft_ldl(MAT_FFT *tree_root, POLY_FFT *tree_dim2, const MAT_FFT *g, const uint64_t dim, const __float128 sigma);
 void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, const POLY_FFT *tree_dim2, const POLY_FFT *c, const uint64_t dim);
 
 #endif

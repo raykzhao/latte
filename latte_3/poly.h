@@ -14,10 +14,18 @@
 #include <gmp.h>
 #include <mpc.h>
 
+#include <complex.h>
+#include <quadmath.h>
+
+typedef struct 
+{
+	__complex128 poly[N];
+} POLY_FFT;
+
 typedef struct 
 {
 	mpc_t poly[N];
-} POLY_FFT;
+} POLY_FFT_HIGH;
 
 typedef struct
 {
@@ -31,7 +39,7 @@ typedef struct
 
 typedef struct
 {
-	mpfr_t poly[N];
+	__float128 poly[N];
 } POLY_R;
 
 static inline void poly_z_init(POLY_Z *a, const uint64_t n)
@@ -54,7 +62,7 @@ static inline void poly_z_clear(POLY_Z *a, const uint64_t n)
 	}
 }
 
-static inline void poly_fft_init_prec(POLY_FFT *a, const uint64_t n, const uint64_t prec)
+static inline void poly_fft_init_high(POLY_FFT_HIGH *a, const uint64_t n, const uint64_t prec)
 {
 	uint64_t i;
 	
@@ -64,13 +72,7 @@ static inline void poly_fft_init_prec(POLY_FFT *a, const uint64_t n, const uint6
 	}
 }
 
-static inline void poly_fft_init(POLY_FFT *a, const uint64_t n)
-{
-	poly_fft_init_prec(a, n, PREC);
-}
-
-
-static inline void poly_fft_clear(POLY_FFT *a, const uint64_t n)
+static inline void poly_fft_clear_high(POLY_FFT_HIGH *a, const uint64_t n)
 {
 	uint64_t i;
 	
@@ -80,27 +82,7 @@ static inline void poly_fft_clear(POLY_FFT *a, const uint64_t n)
 	}
 }
 
-static inline void poly_r_init(POLY_R *a, const uint64_t n)
-{
-	uint64_t i;
-	
-	for (i = 0; i < n; i++)
-	{
-		mpfr_init2(a->poly[i], PREC);
-	}
-}
-
-static inline void poly_r_clear(POLY_R *a, const uint64_t n)
-{
-	uint64_t i;
-	
-	for (i = 0; i < n; i++)
-	{
-		mpfr_clear(a->poly[i]);
-	}
-}
-
 void poly_mul_zz(POLY_Z *out, const POLY_Z *a, const POLY_Z *b, const uint64_t n);
-void poly_mul_z64(POLY_Z *out, const POLY_Z *a, const POLY_64 *b, const uint64_t n);
+void poly_mul_6464(POLY_64 *out, const POLY_64 *a, const POLY_64 *b, const uint64_t n);
 
 #endif
