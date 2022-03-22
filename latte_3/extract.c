@@ -26,17 +26,9 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	static POLY_FFT c;
 	static POLY_FFT s[L + 1];
 	
-	__float128 sigma;
-	__float128 center;
-	
-	__float128 tmp;
-	
 	uint64_t i, j, p;
 	
 	fastrandombytes_setseed(seed);
-	
-	sigma = sigma_l[l];
-	center = 0;
 	
 	for (i = 0; i < l + 1; i++)
 	{
@@ -53,12 +45,12 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	
 	gram(&g, &fft_basis, l + 1, N);
 	
-	fft_ldl(&tree_root, tree_dim2, &g, l + 1, sigma);
+	fft_ldl(&tree_root, tree_dim2, &g, l + 1, sigma_l[l]);
 	
 	/* t_{l + 1} <-- (D_{\sigma_l})^N */
 	for (i = 0; i < N; i++)
 	{
-		t[l + 1].poly[i] = sample_z(center, sigma);
+		t[l + 1].poly[i] = sample_z(0, sigma_l[l]);
 	}
 	
 	ntt(t + l + 1);
@@ -86,9 +78,7 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 		
 		for (p = 0; p < N; p++)
 		{
-			tmp = roundq(crealq(s[i].poly[p]));
-			
-			t[i].poly[p] = tmp;
+			t[i].poly[p] = roundq(crealq(s[i].poly[p]));
 		}
 		
 		ntt(t + i);

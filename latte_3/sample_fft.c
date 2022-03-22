@@ -21,23 +21,17 @@ static void fft_ldl_dim2(POLY_FFT *tree_dim2, const POLY_R *d, const POLY_R *d0,
 	static POLY_R d0_new;
 	static POLY_FFT d1_new;
 	
-	__float128 tmp;
-	
 	if (n == 1)
 	{
-		tmp = sqrtq(d0->poly[0]);
-		tmp = sigma / tmp;
-		tree_dim2->poly[0] = tmp;
+		tree_dim2->poly[0] = sigma / sqrtq(d0->poly[0]);
 	}
 	else
 	{
 		for (p = 0; p < n; p++)
 		{
 			d_new[0].poly[p] = d0->poly[p];
-			tree_dim2->poly[p] = conjq(d1->poly[p]);
-			tree_dim2->poly[p] = tree_dim2->poly[p] / d_new[0].poly[p];
-			tmp = d->poly[p << 1] * d->poly[(p << 1) + 1];
-			d_new[1].poly[p] = tmp / d_new[0].poly[p];
+			tree_dim2->poly[p] = conjq(d1->poly[p]) / d_new[0].poly[p];
+			d_new[1].poly[p] = d->poly[p << 1] * d->poly[(p << 1) + 1] / d_new[0].poly[p];
 		}
 		
 		split_fft_r(&d0_new, &d1_new, d_new, n);
@@ -57,9 +51,7 @@ void fft_ldl(MAT_FFT *tree_root, POLY_FFT *tree_dim2, const MAT_FFT *g, const ui
 	static POLY_R d0;
 	static POLY_FFT d1;
 	
-	__float128 q2;
-	
-	q2 = ((__uint128_t)Q) * ((__uint128_t)Q);
+	const __float128 q2 = ((__uint128_t)Q) * ((__uint128_t)Q);
 	
 	if (dim == 2)
 	{
@@ -82,16 +74,10 @@ void fft_ldl(MAT_FFT *tree_root, POLY_FFT *tree_dim2, const MAT_FFT *g, const ui
 		{
 			d[0].poly[p] = crealq(g->mat[0][0].poly[p]);
 			tree_root->mat[1][0].poly[p] = g->mat[1][0].poly[p] / d[0].poly[p];
-			d[1].poly[p] = crealq(g->mat[1][0].poly[p]) * crealq(g->mat[1][0].poly[p]) + cimagq(g->mat[1][0].poly[p]) * cimagq(g->mat[1][0].poly[p]);
-			d[1].poly[p] = d[1].poly[p] / d[0].poly[p];
-			d[1].poly[p] = crealq(g->mat[1][1].poly[p]) - d[1].poly[p];
+			d[1].poly[p] = crealq(g->mat[1][1].poly[p]) - (crealq(g->mat[1][0].poly[p]) * crealq(g->mat[1][0].poly[p]) + cimagq(g->mat[1][0].poly[p]) * cimagq(g->mat[1][0].poly[p])) / d[0].poly[p];
 			tree_root->mat[2][0].poly[p] = g->mat[2][0].poly[p] / d[0].poly[p];
-			tree_root->mat[2][1].poly[p] = conjq(tree_root->mat[1][0].poly[p]);
-			tree_root->mat[2][1].poly[p] = g->mat[2][0].poly[p] * tree_root->mat[2][1].poly[p];
-			tree_root->mat[2][1].poly[p] = g->mat[2][1].poly[p] - tree_root->mat[2][1].poly[p];
-			tree_root->mat[2][1].poly[p] = tree_root->mat[2][1].poly[p] / d[1].poly[p];
-			d[2].poly[p] = d[0].poly[p] * d[1].poly[p];
-			d[2].poly[p] = q2 / d[2].poly[p];
+			tree_root->mat[2][1].poly[p] = (g->mat[2][1].poly[p] - g->mat[2][0].poly[p] * conjq(tree_root->mat[1][0].poly[p])) / d[1].poly[p];
+			d[2].poly[p] = q2 / (d[0].poly[p] * d[1].poly[p]);
 		}
 
 		split_fft_r(&d0, &d1, d, N);
@@ -113,8 +99,6 @@ static void fft_sampling_dim2(POLY_FFT *z, const POLY_FFT *tree_dim2, const POLY
 	uint64_t p;
 	
 	static POLY_FFT t_j;
-
-	__complex128 tmp;
 	
 	POLY_FFT t_j_split[2];
 	POLY_FFT z_j_split[2];
@@ -139,10 +123,7 @@ static void fft_sampling_dim2(POLY_FFT *z, const POLY_FFT *tree_dim2, const POLY
 		
 		for (p = 0; p < n; p++)
 		{
-			t_j.poly[p] = t[0].poly[p];
-			
-			tmp = t[1].poly[p] - z[1].poly[p];
-			t_j.poly[p] = t_j.poly[p] + tmp * tree_dim2->poly[p];
+			t_j.poly[p] = t[0].poly[p] + (t[1].poly[p] - z[1].poly[p]) * tree_dim2->poly[p];
 		}
 		
 		split_fft(t_j_split, t_j_split + 1, &t_j, n);
@@ -160,8 +141,6 @@ static void fft_sampling(POLY_FFT *z, const MAT_FFT *tree_root, const POLY_FFT *
 	
 	static POLY_FFT t_j;
 	
-	__complex128 tmp;
-	
 	static POLY_FFT t_j_split[2];
 	static POLY_FFT z_j_split[2];
 	
@@ -176,8 +155,7 @@ static void fft_sampling(POLY_FFT *z, const MAT_FFT *tree_root, const POLY_FFT *
 		{
 			for (p = 0; p < N; p++)
 			{
-				tmp = t[i].poly[p] - z[i].poly[p];
-				t_j.poly[p] = t_j.poly[p] + tmp * tree_root->mat[i][j].poly[p];
+				t_j.poly[p] = t_j.poly[p] + (t[i].poly[p] - z[i].poly[p]) * tree_root->mat[i][j].poly[p];
 			}
 		}
 		
@@ -196,8 +174,6 @@ void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, co
 	static POLY_FFT t[L + 1];
 	static POLY_FFT z[L + 1];
 	
-	__complex128 tmp1, tmp2;
-	
 	uint64_t i, j, p;
 	
 	/* t = (c, 0) * B^{-1}
@@ -206,35 +182,17 @@ void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, co
 	{
 		for (p = 0; p < N; p++)
 		{
-			t[0].poly[p] = c->poly[p] * b->mat[1][1].poly[p];
-			t[0].poly[p] = t[0].poly[p] / Q;
-			
-			tmp1 = -b->mat[0][1].poly[p];
-			t[1].poly[p] = c->poly[p] * tmp1;
-			t[1].poly[p] = t[1].poly[p] / Q;
+			t[0].poly[p] = c->poly[p] * b->mat[1][1].poly[p] / Q;			
+			t[1].poly[p] = -c->poly[p] * b->mat[0][1].poly[p] / Q;
 		}
 	}
 	else if (dim == 3)
 	{
 		for (p = 0; p < N; p++)
 		{
-			tmp1 = b->mat[1][1].poly[p] * b->mat[2][2].poly[p];
-			tmp2 = b->mat[1][2].poly[p] * b->mat[2][1].poly[p];
-			tmp1 = tmp1 - tmp2;
-			t[0].poly[p] = c->poly[p] * tmp1;
-			t[0].poly[p] = t[0].poly[p] / Q;
-			
-			tmp1 = b->mat[0][2].poly[p] * b->mat[2][1].poly[p];
-			tmp2 = b->mat[0][1].poly[p] * b->mat[2][2].poly[p];
-			tmp1 = tmp1 - tmp2;
-			t[1].poly[p] = c->poly[p] * tmp1;
-			t[1].poly[p] = t[1].poly[p] / Q;
-			
-			tmp1 = b->mat[0][1].poly[p] * b->mat[1][2].poly[p];
-			tmp2 = b->mat[0][2].poly[p] * b->mat[1][1].poly[p];
-			tmp1 = tmp1 - tmp2;
-			t[2].poly[p] = c->poly[p] * tmp1;
-			t[2].poly[p] = t[2].poly[p] / Q;
+			t[0].poly[p] = c->poly[p] * (b->mat[1][1].poly[p] * b->mat[2][2].poly[p] - b->mat[1][2].poly[p] * b->mat[2][1].poly[p]) / Q;			
+			t[1].poly[p] = c->poly[p] * (b->mat[0][2].poly[p] * b->mat[2][1].poly[p] - b->mat[0][1].poly[p] * b->mat[2][2].poly[p]) / Q;
+			t[2].poly[p] = c->poly[p] * (b->mat[0][1].poly[p] * b->mat[1][2].poly[p] - b->mat[0][2].poly[p] * b->mat[1][1].poly[p]) / Q;
 		}
 	}
 	

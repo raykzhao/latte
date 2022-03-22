@@ -33,7 +33,6 @@ static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const __float128 norm
 	static POLY_FFT fft_f, fft_g;
 	__complex128 denom;
 	__float128 norm2;
-	__float128 tmp;
 	
 	__complex128 fft_f_adj, fft_g_adj;
 	
@@ -61,10 +60,9 @@ static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const __float128 norm
 		for (i = 0; i < N; i++)
 		{
 			fft_f_adj = conjq(fft_f.poly[i]);
-			denom = fft_f.poly[i] * fft_f_adj;
-			
 			fft_g_adj = conjq(fft_g.poly[i]);
-			denom = denom + fft_g.poly[i] * fft_g_adj;
+
+			denom = fft_f.poly[i] * fft_f_adj + fft_g.poly[i] * fft_g_adj;
 			
 			fft_f.poly[i] = fft_f_adj / denom;
 			fft_g.poly[i] = fft_g_adj / denom;
@@ -76,10 +74,7 @@ static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const __float128 norm
 		norm2 = 0;
 		for (i = 0; i < N; i++)
 		{
-			tmp = crealq(fft_f.poly[i]) * crealq(fft_f.poly[i]);
-			norm2 = norm2 + tmp;
-			tmp = crealq(fft_g.poly[i]) * crealq(fft_g.poly[i]);
-			norm2 = norm2 + tmp;
+			norm2 = norm2 + crealq(fft_f.poly[i]) * crealq(fft_f.poly[i]) + crealq(fft_g.poly[i]) * crealq(fft_g.poly[i]);
 		}
 		
 		norm2 = norm2 * Q;
@@ -391,15 +386,12 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 {
 	static POLY_Z f_z, g_z, F_z, G_z;
 	
-	__float128 norm_bound;
 	uint64_t i;
 	
 	poly_z_init(&f_z, N);
 	poly_z_init(&g_z, N);
 	poly_z_init(&F_z, N);
 	poly_z_init(&G_z, N);
-	
-	norm_bound = norm_l[0];
 	
 	while (1)
 	{
@@ -408,7 +400,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		sample_0z(g);
 		
 		/* Norm check */
-		if (gs_norm(f, g, norm_bound))
+		if (gs_norm(f, g, norm_l[0]))
 		{
 			continue;
 		}

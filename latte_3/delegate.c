@@ -43,18 +43,11 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	static POLY_FFT d[L];
 	static POLY_FFT k_red_fft;
 	static POLY_64 k_red;
-	static POLY_64 ks, z;
-	
-	static POLY_64 F_64, G_64;
+	static POLY_64 ks;
 	
 	uint64_t i, j, k, p;
 	
-	__float128 sigma;
-	__float128 center;
-	__float128 norm_bound;
-	
 	__float128 tmp;
-	__complex128 tmp2;
 	
 	uint64_t norm;
 	
@@ -66,10 +59,6 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	poly_z_init(&g, N);
 	poly_z_init(&F, N);
 	poly_z_init(&G, N);
-	
-	sigma = sigma_l[l];
-	norm_bound = norm_l[l];
-	center = 0;
 	
 	for (i = 0; i < l + 1; i++)
 	{
@@ -86,7 +75,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	
 	gram(&basis_g, &fft_basis, l + 1, N);
 	
-	fft_ldl(&tree_root, tree_dim2, &basis_g, l + 1, sigma);
+	fft_ldl(&tree_root, tree_dim2, &basis_g, l + 1, sigma_l[l]);
 	
 	do
 	{
@@ -99,7 +88,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 				for (p = 0; p < N; p++)
 				{
 					/* s_{i, l + 1} <-- (D_{\sigma_l})^N */
-					s->mat[i][l + 1].poly[p] = sample_z(center, sigma);
+					s->mat[i][l + 1].poly[p] = sample_z(0, sigma_l[l]);
 					
 					c_ntt.poly[p] = -(s->mat[i][l + 1].poly[p]);
 					
@@ -137,15 +126,13 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 					
 					for (p = 0; p < N; p++)
 					{
-						tmp = roundq(crealq(s_ifft.poly[p]));
-						
-						s->mat[i][j].poly[p] = tmp;
+						s->mat[i][j].poly[p] = roundq(crealq(s_ifft.poly[p]));
 						
 						norm += s->mat[i][j].poly[p] * s->mat[i][j].poly[p];
 					}
 				}
 				/* ||(s_{i, 0},...,s_{i, l + 1}|| ?> \sqrt{(l + 2)N} * \sigma_l */
-			} while (norm_bound < norm);
+			} while (norm_l[l] < norm);
 			
 			for (p = 0; p < N; p++)
 			{
@@ -161,13 +148,8 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 		{
 			for (p = 0; p < N; p++)
 			{
-				f_fft.poly[p] = s_fft.mat[0][1].poly[p] * s_fft.mat[1][2].poly[p];
-				tmp2 = s_fft.mat[0][2].poly[p] * s_fft.mat[1][1].poly[p];
-				f_fft.poly[p] = f_fft.poly[p] - tmp2;
-				
-				g_fft.poly[p] = s_fft.mat[0][0].poly[p] * s_fft.mat[1][2].poly[p];
-				tmp2 = s_fft.mat[0][2].poly[p] * s_fft.mat[1][0].poly[p];
-				g_fft.poly[p] = g_fft.poly[p] - tmp2;
+				f_fft.poly[p] = s_fft.mat[0][1].poly[p] * s_fft.mat[1][2].poly[p] - s_fft.mat[0][2].poly[p] * s_fft.mat[1][1].poly[p];				
+				g_fft.poly[p] = s_fft.mat[0][0].poly[p] * s_fft.mat[1][2].poly[p] - s_fft.mat[0][2].poly[p] * s_fft.mat[1][0].poly[p];
 			}
 		}
 		
@@ -182,9 +164,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 			f_det_check |= tmp != 0;
 			
 			mpz_set_si(f.poly[p], tmp);
-			
-			tmp = roundq(crealq(g_fft.poly[p]));
-			mpz_set_si(g.poly[p], tmp);
+			mpz_set_si(g.poly[p], roundq(crealq(g_fft.poly[p])));
 		}
 		
 		if (!f_det_check)
@@ -229,19 +209,17 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	{
 		for (p = 0; p < N; p++)
 		{
-			s_g_det.poly[p] = s_g.mat[0][0].poly[p] * s_g.mat[1][1].poly[p];
-			tmp2 = s_g.mat[0][1].poly[p] * s_g.mat[1][0].poly[p];
-			s_g_det.poly[p] = s_g_det.poly[p] - tmp2;
+			s_g_det.poly[p] = s_g.mat[0][0].poly[p] * s_g.mat[1][1].poly[p] - s_g.mat[0][1].poly[p] * s_g.mat[1][0].poly[p];
 		}
 	}
 	
 	for (p = 0; p < N; p++)
-	{
-		F_64.poly[p] = mpz_get_si(F.poly[p]);
-		F_fft.poly[p] = F_64.poly[p];
+	{		
+		s->mat[2][0].poly[p] = mpz_get_si(G.poly[p]);
+		G_fft.poly[p] = s->mat[2][0].poly[p];
 		
-		G_64.poly[p] = mpz_get_si(G.poly[p]);
-		G_fft.poly[p] = G_64.poly[p];
+		s->mat[2][1].poly[p] = mpz_get_si(F.poly[p]);
+		F_fft.poly[p] = s->mat[2][1].poly[p];
 	}
 	
 	fft(&F_fft, N);
@@ -251,8 +229,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	{
 		for (p = 0; p < N; p++)
 		{
-			d[i].poly[p] = s_fft_head.mat[i][0].poly[p] * G_fft.poly[p];
-			d[i].poly[p] = d[i].poly[p] + s_fft_head.mat[i][1].poly[p] * F_fft.poly[p];
+			d[i].poly[p] = s_fft_head.mat[i][0].poly[p] * G_fft.poly[p] + s_fft_head.mat[i][1].poly[p] * F_fft.poly[p];
 		}
 	}
 	
@@ -261,76 +238,62 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	{
 		for (p = 0; p < N; p++)
 		{
-			k_red_fft.poly[p] = d[0].poly[p] * s_g.mat[1][1].poly[p];
-			tmp2 = s_g.mat[0][1].poly[p] * d[1].poly[p];
-			k_red_fft.poly[p] = k_red_fft.poly[p] - tmp2;
-			k_red_fft.poly[p] = k_red_fft.poly[p] / s_g_det.poly[p];
+			k_red_fft.poly[p] = (d[0].poly[p] * s_g.mat[1][1].poly[p] - s_g.mat[0][1].poly[p] * d[1].poly[p]) / s_g_det.poly[p];
 		}
 		
 		ifft(&k_red_fft, N);
 		
 		for (p = 0; p < N; p++)
 		{
-			tmp = roundq(crealq(k_red_fft.poly[p]));
-			k_red.poly[p] = tmp;
+			k_red.poly[p] = roundq(crealq(k_red_fft.poly[p]));
 		}
+		
 		poly_mul_6464(&ks, &k_red, s->mat[0], N);
 		for (p = 0; p < N; p++)
 		{
-			G_64.poly[p] = G_64.poly[p] - ks.poly[p];
+			s->mat[2][0].poly[p] = s->mat[2][0].poly[p] - ks.poly[p];
 		}
 		
 		poly_mul_6464(&ks, &k_red, s->mat[0] + 1, N);
 		for (p = 0; p < N; p++)
 		{
-			F_64.poly[p] = F_64.poly[p] - ks.poly[p];
+			s->mat[2][1].poly[p] = s->mat[2][1].poly[p] - ks.poly[p];
 		}
 		
 		poly_mul_6464(&ks, &k_red, s->mat[0] + 2, N);
 		for (p = 0; p < N; p++)
 		{
-			z.poly[p] = -ks.poly[p];
+			s->mat[2][2].poly[p] = -ks.poly[p];
 		}
 		
 		for (p = 0; p < N; p++)
 		{
-			k_red_fft.poly[p] = s_g.mat[0][0].poly[p] * d[1].poly[p];
-			tmp2 = d[0].poly[p] * s_g.mat[1][0].poly[p];
-			k_red_fft.poly[p] = k_red_fft.poly[p] - tmp2;
-			k_red_fft.poly[p] = k_red_fft.poly[p] / s_g_det.poly[p];
+			k_red_fft.poly[p] = (s_g.mat[0][0].poly[p] * d[1].poly[p] - d[0].poly[p] * s_g.mat[1][0].poly[p]) / s_g_det.poly[p];
 		}
 		
 		ifft(&k_red_fft, N);
 		
 		for (p = 0; p < N; p++)
 		{
-			tmp = roundq(crealq(k_red_fft.poly[p]));
-			k_red.poly[p] = tmp;
+			k_red.poly[p] = roundq(crealq(k_red_fft.poly[p]));
 		}
 		
 		poly_mul_6464(&ks, &k_red, s->mat[1], N);
 		for (p = 0; p < N; p++)
 		{
-			G_64.poly[p] = G_64.poly[p] - ks.poly[p];
+			s->mat[2][0].poly[p] = s->mat[2][0].poly[p] - ks.poly[p];
 		}
 		
 		poly_mul_6464(&ks, &k_red, s->mat[1] + 1, N);
 		for (p = 0; p < N; p++)
 		{
-			F_64.poly[p] = F_64.poly[p] - ks.poly[p];
+			s->mat[2][1].poly[p] = s->mat[2][1].poly[p] - ks.poly[p];
 		}
 		
 		poly_mul_6464(&ks, &k_red, s->mat[1] + 2, N);
 		for (p = 0; p < N; p++)
 		{
-			z.poly[p] = z.poly[p] - ks.poly[p];
-		}
-		
-		for (p = 0; p < N; p++)
-		{
-			s->mat[2][0].poly[p] = G_64.poly[p];
-			s->mat[2][1].poly[p] = F_64.poly[p];
-			s->mat[2][2].poly[p] = z.poly[p];
+			s->mat[2][2].poly[p] = s->mat[2][2].poly[p] - ks.poly[p];
 		}
 	}
 	

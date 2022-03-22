@@ -106,7 +106,6 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 	__float128 c, cr, rc;
 	__float128 yr, rej;
 	__float128 sigma2;
-	__float128 discrete_normalisation;
 	__float128 comp;
 	__float128 yrc;
 	
@@ -119,21 +118,12 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 	__float128 r1, r2;
 	__float128 norm[2];
 	
-	int64_t ret;
-	
 	cr = roundq(center);
 	c = center - cr;
 	
-	sigma2 = sigma * sigma;
-	sigma2 = sigma2 * 2;
-	sigma2 = -sigma2;
+	sigma2 = -sigma * sigma * 2;
 	
-	discrete_normalisation = sigma * sqrt_pi2;
-	
-	rc = c * c;
-	rc = rc / sigma2;
-	rc = expq(rc);
-	rc = rc / discrete_normalisation;
+	rc = expq(c * c / sigma2) / (sigma * sqrt_pi2);
 	
 	fastrandombytes(r, COMP_ENTRY_SIZE);
 	
@@ -142,9 +132,7 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 	
 	if (comp < rc)
 	{
-		ret = cr;
-		
-		return ret;
+		return cr;
 	}
 	
 	while (1)
@@ -165,11 +153,7 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 				r2 = load_88(r_bm + 11);
 				r2 = r2 / (((__uint128_t)1) << PREC);
 				
-				r1 = logq(r1);
-				r1 = r1 * (-2);
-				r1 = sqrtq(r1);
-				r1 = r1 * sigma;
-				
+				r1 = sqrtq(-2 * logq(r1)) * sigma;
 				r2 = r2 * pi2;
 				
 				sincosq(r2, norm, norm + 1);
@@ -182,26 +166,19 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 			
 			cmp1 = yr >= 0;
 			
-			yr = floorq(yr);
-			yr = yr + cmp1;
+			yr = floorq(yr) + cmp1;
 			
 			yrc = yr - c;
 			rej = yrc + norm[head];
 			yrc = yrc - norm[head];
-			rej = rej * yrc;
-			rej = rej / sigma2;
-			rej = expq(rej);
+			rej = expq(rej * yrc / sigma2);
 			
 			comp = load_88(r + i * COMP_ENTRY_SIZE);
 			comp = comp / (((__uint128_t)1) << PREC);
 			
 			if (comp < rej)
 			{
-				yr = yr + cr;
-				
-				ret = yr;
-				
-				return ret;
+				return yr + cr;
 			}
 		}
 	}

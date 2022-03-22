@@ -1245,11 +1245,8 @@ void split_fft(POLY_FFT *f0, POLY_FFT *f1, const POLY_FFT *a, const uint64_t n)
 	{
 		j = i << 1;
 		
-		f0->poly[i] = a->poly[j] + a->poly[j + 1];
-		f0->poly[i] = f0->poly[i] / 2;
-		f1->poly[i] = a->poly[j] - a->poly[j + 1];
-		f1->poly[i] = f1->poly[i] * ifft_zeta[(n >> 1) + i];
-		f1->poly[i] = f1->poly[i] / 2;
+		f0->poly[i] = (a->poly[j] + a->poly[j + 1]) / 2;
+		f1->poly[i] = (a->poly[j] - a->poly[j + 1]) * ifft_zeta[(n >> 1) + i] / 2;
 	}
 }
 
@@ -1257,7 +1254,6 @@ void split_fft(POLY_FFT *f0, POLY_FFT *f1, const POLY_FFT *a, const uint64_t n)
 void split_fft_r(POLY_R *f0, POLY_FFT *f1, const POLY_R *a, const uint64_t n)
 {
 	uint64_t i, j;
-	__float128 tmp;
 	
 	fft_init();
 	
@@ -1268,11 +1264,8 @@ void split_fft_r(POLY_R *f0, POLY_FFT *f1, const POLY_R *a, const uint64_t n)
 	{
 		j = i << 1;
 		
-		f0->poly[i] = a->poly[j] + a->poly[j + 1];
-		f0->poly[i] = f0->poly[i] / 2;
-		tmp = a->poly[j] - a->poly[j + 1];
-		tmp = tmp / 2;
-		f1->poly[i] = ifft_zeta[(n >> 1) + i] * tmp;
+		f0->poly[i] = (a->poly[j] + a->poly[j + 1]) / 2;
+		f1->poly[i] = (a->poly[j] - a->poly[j + 1]) * ifft_zeta[(n >> 1) + i] / 2;
 	}
 }
 

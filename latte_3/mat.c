@@ -16,8 +16,6 @@ void gram(MAT_FFT *out, const MAT_FFT *a, const uint64_t dim, const uint64_t n)
 	
 	static MAT_FFT a_head;
 	
-	__float128 tmp, tmp1;
-		
 	for (i = 0; i < dim; i++)
 	{
 		for (j = 0; j < dim; j++)
@@ -37,13 +35,11 @@ void gram(MAT_FFT *out, const MAT_FFT *a, const uint64_t dim, const uint64_t n)
 			{
 				for (p = 0; p < N; p++)
 				{
-					tmp = crealq(a->mat[i][0].poly[p]) * crealq(a->mat[i][0].poly[p]) + cimagq(a->mat[i][0].poly[p]) * cimagq(a->mat[i][0].poly[p]);
+					out->mat[i][j].poly[p] = crealq(a->mat[i][0].poly[p]) * crealq(a->mat[i][0].poly[p]) + cimagq(a->mat[i][0].poly[p]) * cimagq(a->mat[i][0].poly[p]);
 					for (k = 1; k < dim; k++)
 					{
-						tmp1 = crealq(a->mat[i][k].poly[p]) * crealq(a->mat[i][k].poly[p]) + cimagq(a->mat[i][k].poly[p]) * cimagq(a->mat[i][k].poly[p]);
-						tmp = tmp + tmp1;
+						out->mat[i][j].poly[p] = out->mat[i][j].poly[p] + crealq(a->mat[i][k].poly[p]) * crealq(a->mat[i][k].poly[p]) + cimagq(a->mat[i][k].poly[p]) * cimagq(a->mat[i][k].poly[p]);
 					}
-					out->mat[i][j].poly[p] = tmp;
 				}
 			}
 			else
