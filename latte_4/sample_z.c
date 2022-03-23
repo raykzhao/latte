@@ -147,10 +147,10 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 				
 				fastrandombytes((unsigned char *)r_bm, BOX_MULLER_BYTES);
 				
-				r1 = load_88(r_bm);
+				r1 = load_88(r_bm) + 1;
 				r1 = r1 / (((__uint128_t)1) << PREC);
 				
-				r2 = load_88(r_bm + 11);
+				r2 = load_88(r_bm + 11) + 1;
 				r2 = r2 / (((__uint128_t)1) << PREC);
 				
 				r1 = sqrtq(-2 * logq(r1)) * sigma;
