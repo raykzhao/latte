@@ -12,12 +12,25 @@
 
 #include <x86intrin.h>
 
+/* Box-Muller sampler precision: 113 bits */
+#define FP_PRECISION 113
+static const __float128 FP_FACTOR = 1.0Q / (((__uint128_t)1) << FP_PRECISION);
+static const __uint128_t FP_MASK = (((__uint128_t)1) << FP_PRECISION) - 1;
+#define BOX_MULLER_BYTES (16 * 2)
+
 /* Constants used by COSAC */
 static const __float128 pi2 = 2 * M_PIq;
 static const __float128 sqrt_pi2 = 2 / (M_SQRT1_2q * M_2_SQRTPIq);
 
-#define BOX_MULLER_BYTES (PREC * 2 / 8)
-#define COMP_ENTRY_SIZE (PREC / 8)
+/* Parameters used by FACCT comparison */
+#define COMP_ENTRY_SIZE 21
+#define COSAC_EXP_MANTISSA_PRECISION 112
+static const __uint128_t COSAC_EXP_MANTISSA_MASK = (((__uint128_t)1) << COSAC_EXP_MANTISSA_PRECISION) - 1;
+#define COSAC_R_MANTISSA_PRECISION (COSAC_EXP_MANTISSA_PRECISION + 1)
+static const __uint128_t COSAC_R_MANTISSA_MASK = (((__uint128_t)1) << COSAC_R_MANTISSA_PRECISION) - 1;
+#define COSAC_R_EXPONENT_L (8 * COMP_ENTRY_SIZE - COSAC_R_MANTISSA_PRECISION)
+static const __uint128_t COSAC_FLOAT128_ONE = ((__uint128_t)0x3fff) << 112;
+
 #define DISCRETE_BYTES (2 * COMP_ENTRY_SIZE)
 
 /* Constants used by FACCT */
@@ -90,9 +103,31 @@ static const __m256i V_DOUBLE_ONE = {DOUBLE_ONE, DOUBLE_ONE, DOUBLE_ONE, DOUBLE_
 
 static const __m256d V_K_2_INV = {BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV};
 
-static inline __uint128_t load_88(const unsigned char *x)
+static inline uint64_t load_40(const unsigned char *x)
 {
-	return ((__uint128_t)(*x)) | (((__uint128_t)(*(x + 1))) << 8) | (((__uint128_t)(*(x + 2))) << 16) | (((__uint128_t)(*(x + 3))) << 24) | (((__uint128_t)(*(x + 4))) << 32) | (((__uint128_t)(*(x + 5))) << 40) | (((__uint128_t)(*(x + 6))) << 48) | (((__uint128_t)(*(x + 7))) << 56) | (((__uint128_t)(*(x + 8))) << 64) | (((__uint128_t)(*(x + 9))) << 72) | (((__uint128_t)(*(x + 10))) << 80);
+	return ((uint64_t)(*x)) | (((uint64_t)(*(x + 1))) << 8) | (((uint64_t)(*(x + 2))) << 16) | (((uint64_t)(*(x + 3))) << 24) | (((uint64_t)(*(x + 4))) << 32);
+}
+
+static inline int64_t cosac_comp(const unsigned char *r, const __float128 x)
+{
+	__uint128_t res = *((__uint128_t *)(&x));
+	__uint128_t res_mantissa;
+	uint64_t res_exponent;
+	__uint128_t r1;
+	uint64_t r2;
+	__uint128_t r_mantissa;
+	uint64_t r_exponent;
+	
+	res_mantissa = (res & COSAC_EXP_MANTISSA_MASK) | (((__uint128_t)1) << COSAC_EXP_MANTISSA_PRECISION);
+	res_exponent = COSAC_R_EXPONENT_L - 0x3fff + 1 + (res >> COSAC_EXP_MANTISSA_PRECISION); 
+	
+	r1 = *((__uint128_t *)r);
+	r2 = load_40(r + 16);
+	
+	r_mantissa = r1 & COSAC_R_MANTISSA_MASK;
+	r_exponent = (r1 >> COSAC_R_MANTISSA_PRECISION) | (r2 << (128 - COSAC_R_MANTISSA_PRECISION));
+	
+	return (res == COSAC_FLOAT128_ONE) || ((r_mantissa < res_mantissa) && (r_exponent < (1LL << res_exponent))); 	
 }
 
 /* New COSAC sampler. 
@@ -106,7 +141,6 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 	__float128 c, cr, rc;
 	__float128 yr, rej;
 	__float128 sigma2;
-	__float128 comp;
 	__float128 yrc;
 	
 	uint64_t i;
@@ -127,10 +161,7 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 	
 	fastrandombytes(r, COMP_ENTRY_SIZE);
 	
-	comp = load_88(r);
-	comp = comp / (((__uint128_t)1) << PREC);
-	
-	if (comp < rc)
+	if (cosac_comp(r, rc))
 	{
 		return cr;
 	}
@@ -147,11 +178,8 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 				
 				fastrandombytes((unsigned char *)r_bm, BOX_MULLER_BYTES);
 				
-				r1 = load_88(r_bm) + 1;
-				r1 = r1 / (((__uint128_t)1) << PREC);
-				
-				r2 = load_88(r_bm + 11) + 1;
-				r2 = r2 / (((__uint128_t)1) << PREC);
+				r1 = (((*((__uint128_t *)r)) & FP_MASK) + 1) * FP_FACTOR;
+				r2 = (((*((__uint128_t *)(r + 16))) & FP_MASK) + 1) * FP_FACTOR;
 				
 				r1 = sqrtq(-2 * logq(r1)) * sigma;
 				r2 = r2 * pi2;
@@ -173,10 +201,7 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 			yrc = yrc - norm[head];
 			rej = expq(rej * yrc / sigma2);
 			
-			comp = load_88(r + i * COMP_ENTRY_SIZE);
-			comp = comp / (((__uint128_t)1) << PREC);
-			
-			if (comp < rej)
+			if (cosac_comp(r + i * COMP_ENTRY_SIZE, rej))
 			{
 				return yr + cr;
 			}

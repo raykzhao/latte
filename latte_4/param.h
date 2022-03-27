@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <quadmath.h>
 
-#define PREC 88
-
 #define N 2048
 
 #define Q 274810798081LL /* 2^38 - 2^26 + 1 */
