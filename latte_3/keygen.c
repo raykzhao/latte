@@ -21,6 +21,8 @@
 #include <mpfr.h>
 #include <mpc.h>
 
+#include "littleendian.h"
+
 #define SAMPLE_B_LEN 1052
 #define SAMPLE_B_BYTE 5
 #define SAMPLE_B_BOUND 1099494850576LL
@@ -430,11 +432,6 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_clear(&g_z, N);
 	poly_z_clear(&F_z, N);
 	poly_z_clear(&G_z, N);
-}
-
-static inline uint64_t load_40(const unsigned char *x)
-{
-	return ((uint64_t)(*x)) | (((uint64_t)(*(x + 1))) << 8) | (((uint64_t)(*(x + 2))) << 16) | (((uint64_t)(*(x + 3))) << 24) | (((uint64_t)(*(x + 4))) << 32);
 }
 
 static void sample_b(POLY_64 *b)
