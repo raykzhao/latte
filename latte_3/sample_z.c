@@ -14,11 +14,10 @@
 
 #include "littleendian.h"
 
-/* Box-Muller sampler precision: 113 bits */
-#define FP_PRECISION 113
+/* Box-Muller sampler precision: 96 bits */
+#define FP_PRECISION 96
 static const __float128 FP_FACTOR = 1.0Q / (((__uint128_t)1) << FP_PRECISION);
-static const __uint128_t FP_MASK = (((__uint128_t)1) << FP_PRECISION) - 1;
-#define BOX_MULLER_BYTES (16 * 2)
+#define BOX_MULLER_BYTES (12 * 2)
 
 /* Constants used by COSAC */
 static const __float128 pi2 = 2 * M_PIq;
@@ -175,8 +174,8 @@ int64_t sample_z(const __float128 center, const __float128 sigma)
 				
 				fastrandombytes((unsigned char *)r_bm, BOX_MULLER_BYTES);
 				
-				r1 = (((*((__uint128_t *)r)) & FP_MASK) + 1) * FP_FACTOR;
-				r2 = (((*((__uint128_t *)(r + 16))) & FP_MASK) + 1) * FP_FACTOR;
+				r1 = (load_96(r) + 1) * FP_FACTOR;
+				r2 = (load_96(r + 12) + 1) * FP_FACTOR;
 				
 				r1 = sqrtq(-2 * logq(r1)) * sigma;
 				r2 = r2 * pi2;
