@@ -10,21 +10,30 @@
 #include "fastrandombytes.h"
 #include "poly.h"
 
-#include <mpfr.h>
 #include <x86intrin.h>
 
+#include "littleendian.h"
+
+/* Box-Muller sampler precision: 53 bits */
+#define FP_PRECISION 53
+#define FP_FACTOR (1.0 / (1LL << FP_PRECISION))
+#define FP_MASK ((1LL << FP_PRECISION) - 1)
+#define BOX_MULLER_BYTES (8 * 2)
+
 /* Constants used by COSAC */
-static const char pi2_str[PREC] = "6.283185307179586476925286766559005768394338798750211641949889184615632812572";
-static const char sqrt_pi2_str[PREC] = "2.506628274631000502415765284811045253006986740609938316629923576342293654608";
+static const double pi2 = 2 * M_PI;
+static const double sqrt_pi2 = 2 / (M_SQRT1_2 * M_2_SQRTPI);
 
-static mpfr_t pi2;
-static mpfr_t sqrt_pi2;
+/* Parameters used by FACCT comparison */
+#define COMP_ENTRY_SIZE 13
+#define COSAC_EXP_MANTISSA_PRECISION 52
+#define COSAC_EXP_MANTISSA_MASK ((1LL << COSAC_EXP_MANTISSA_PRECISION) - 1)
+#define COSAC_R_MANTISSA_PRECISION (COSAC_EXP_MANTISSA_PRECISION + 1)
+#define COSAC_R_MANTISSA_MASK ((1LL << COSAC_R_MANTISSA_PRECISION) - 1)
+#define COSAC_R_EXPONENT_L (8 * COMP_ENTRY_SIZE - COSAC_R_MANTISSA_PRECISION)
+#define COSAC_DOUBLE_ONE (0x3ffLL << 52)
 
-#define BOX_MULLER_BYTES (PREC * 2 / 8)
-#define COMP_ENTRY_SIZE (PREC / 8)
 #define DISCRETE_BYTES (2 * COMP_ENTRY_SIZE)
-
-static uint64_t sample_z_initialised;
 
 /* Constants used by FACCT */
 #define CDT_ENTRY_SIZE 16
@@ -96,80 +105,62 @@ static const __m256i V_DOUBLE_ONE = {DOUBLE_ONE, DOUBLE_ONE, DOUBLE_ONE, DOUBLE_
 
 static const __m256d V_K_2_INV = {BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV, BINARY_SAMPLER_K_2_INV};
 
-static void sample_z_init()
+static inline int64_t cosac_comp(const unsigned char *r, const double x)
 {
-	if (!sample_z_initialised)
-	{
-		mpfr_inits2(PREC, pi2, sqrt_pi2, NULL);
-		
-		mpfr_set_str(pi2, pi2_str, 10, MPFR_RNDN);
-		mpfr_set_str(sqrt_pi2, sqrt_pi2_str, 10, MPFR_RNDN);
-		
-		sample_z_initialised = 1;
-	}
+	uint64_t res = *((uint64_t *)(&x));
+	uint64_t res_mantissa;
+	uint64_t res_exponent;
+	uint64_t r1;
+	uint64_t r2;
+	uint64_t r_mantissa;
+	uint64_t r_exponent;
+	
+	res_mantissa = (res & COSAC_EXP_MANTISSA_MASK) | (1LL << COSAC_EXP_MANTISSA_PRECISION);
+	res_exponent = COSAC_R_EXPONENT_L - 0x3ff + 1 + (res >> COSAC_EXP_MANTISSA_PRECISION); 
+	
+	r1 = *((uint64_t *)r);
+	r2 = load_40(r + 8);
+	
+	r_mantissa = r1 & COSAC_R_MANTISSA_MASK;
+	r_exponent = (r1 >> COSAC_R_MANTISSA_PRECISION) | (r2 << (64 - COSAC_R_MANTISSA_PRECISION));
+	
+	return (res == COSAC_DOUBLE_ONE) || ((r_mantissa < res_mantissa) && (r_exponent < (1LL << res_exponent))); 	
 }
 
 /* New COSAC sampler. 
  * This is the sampling algorithm from:
  * Shuo Sun, Yongbin Zhou, Yunfeng Ji, Rui Zhang, & Yang Tao. (2021). Generic, Efficient and Isochronous Gaussian Sampling over the Integers. 
  * https://eprint.iacr.org/2021/199 */
-int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
+int64_t sample_z(const double center, const double sigma)
 {
 	unsigned char r[DISCRETE_BYTES]; 	
 	
-	mpfr_t c, cr, rc;
-	mpfr_t yr, rej;
-	mpfr_t sigma2;
-	mpfr_t discrete_normalisation;
-	mpfr_t comp;
-	mpfr_t yrc;
+	double c, cr, rc;
+	double yr, rej;
+	double sigma2;
+	double yrc;
 	
 	uint64_t i;
 	int64_t cmp1;
 	uint64_t head = 2;
 
-	uint64_t r_bm[BOX_MULLER_BYTES / 8];
+	unsigned char r_bm[BOX_MULLER_BYTES];
 
-	mpfr_t r1, r2;
-	mpfr_t norm[2];
+	double r1, r2;
+	double norm[2];
 	
-	int64_t ret;
+	cr = round(center);
+	c = center - cr;
 	
-	sample_z_init();
+	sigma2 = -sigma * sigma * 2;
 	
-	mpfr_inits2(PREC, c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
-	
-	mpfr_round(cr, center);
-	mpfr_sub(c, center, cr, MPFR_RNDN);
-	
-	mpfr_sqr(sigma2, sigma, MPFR_RNDN);
-	mpfr_mul_2ui(sigma2, sigma2, 1, MPFR_RNDN);
-	mpfr_neg(sigma2, sigma2, MPFR_RNDN);
-	
-	mpfr_mul(discrete_normalisation, sigma, sqrt_pi2, MPFR_RNDN);
-	
-	mpfr_sqr(rc, c, MPFR_RNDN);
-	mpfr_div(rc, rc, sigma2, MPFR_RNDN);
-	mpfr_exp(rc, rc, MPFR_RNDN);
-	mpfr_div(rc, rc, discrete_normalisation, MPFR_RNDN);
+	rc = exp(c * c / sigma2) / (sigma * sqrt_pi2);
 	
 	fastrandombytes(r, COMP_ENTRY_SIZE);
 	
-	mpfr_set_ui(comp, ((uint64_t *)r)[3], MPFR_RNDN);
-	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[2], MPFR_RNDN);
-	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[1], MPFR_RNDN);
-	mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-	mpfr_add_ui(comp, comp, ((uint64_t *)r)[0], MPFR_RNDN);
-	mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
-	
-	if (mpfr_less_p(comp, rc))
+	if (cosac_comp(r, rc))
 	{
-		ret = mpfr_get_si(cr, MPFR_RNDN);
-
-		mpfr_clears(c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
-		return ret;
+		return cr;
 	}
 	
 	while (1)
@@ -184,71 +175,33 @@ int64_t sample_z(const mpfr_t center, const mpfr_t sigma)
 				
 				fastrandombytes((unsigned char *)r_bm, BOX_MULLER_BYTES);
 				
-				mpfr_set_ui(r1, r_bm[3], MPFR_RNDN);
-				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[2], MPFR_RNDN);
-				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[1], MPFR_RNDN);
-				mpfr_mul_2ui(r1, r1, 64, MPFR_RNDN);
-				mpfr_add_ui(r1, r1, r_bm[0], MPFR_RNDN);
-				mpfr_div_2ui(r1, r1, PREC, MPFR_RNDN);
+				r1 = (((*((uint64_t *)r)) & FP_MASK) + 1) * FP_FACTOR;
+				r2 = (((*((uint64_t *)(r + 8))) & FP_MASK) + 1) * FP_FACTOR;
 				
-				mpfr_set_ui(r2, r_bm[7], MPFR_RNDN);
-				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[6], MPFR_RNDN);
-				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[5], MPFR_RNDN);
-				mpfr_mul_2ui(r2, r2, 64, MPFR_RNDN);
-				mpfr_add_ui(r2, r2, r_bm[4], MPFR_RNDN);
-				mpfr_div_2ui(r2, r2, PREC, MPFR_RNDN);
+				r1 = sqrt(-2 * log(r1)) * sigma;
+				r2 = r2 * pi2;
 				
-				mpfr_log(r1, r1, MPFR_RNDN);
-				mpfr_mul_si(r1, r1, -2, MPFR_RNDN);
-				mpfr_sqrt(r1, r1, MPFR_RNDN);
-				mpfr_mul(r1, r1, sigma, MPFR_RNDN);
-				
-				mpfr_mul(r2, r2, pi2, MPFR_RNDN);
-				
-				mpfr_sin_cos(norm[0], norm[1], r2, MPFR_RNDN);
-				
-				mpfr_mul(norm[0], r1, norm[0], MPFR_RNDN);
-				mpfr_mul(norm[1], r1, norm[1], MPFR_RNDN);
+				norm[0] = r1 * sin(r2);
+				norm[1] = r1 * cos(r2);
 			}
 			
-			mpfr_add(yr, norm[head], c, MPFR_RNDN);
+			yr = norm[head] + c;
 			
-			cmp1 = mpfr_sgn(yr) >= 0;
+			cmp1 = yr >= 0;
 			
-			mpfr_floor(yr, yr);
-			mpfr_add_ui(yr, yr, cmp1, MPFR_RNDN);
+			yr = floor(yr) + cmp1;
 			
-			mpfr_sub(yrc, yr, c, MPFR_RNDN);
-			mpfr_add(rej, yrc, norm[head], MPFR_RNDN);
-			mpfr_sub(yrc, yrc, norm[head], MPFR_RNDN);
-			mpfr_mul(rej, rej, yrc, MPFR_RNDN);
-			mpfr_div(rej, rej, sigma2, MPFR_RNDN);
-			mpfr_exp(rej, rej, MPFR_RNDN);
+			yrc = yr - c;
+			rej = yrc + norm[head];
+			yrc = yrc - norm[head];
+			rej = exp(rej * yrc / sigma2);
 			
-			mpfr_set_ui(comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 3], MPFR_RNDN);
-			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 2], MPFR_RNDN);
-			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8) + 1], MPFR_RNDN);
-			mpfr_mul_2ui(comp, comp, 64, MPFR_RNDN);
-			mpfr_add_ui(comp, comp, ((uint64_t *)r)[i * (COMP_ENTRY_SIZE / 8)], MPFR_RNDN);
-			mpfr_div_2ui(comp, comp, PREC, MPFR_RNDN);
-			
-			if (mpfr_less_p(comp, rej))
+			if (cosac_comp(r + i * COMP_ENTRY_SIZE, rej))
 			{
-				mpfr_add(yr, yr, cr, MPFR_RNDN);
-				
-				ret = mpfr_get_si(yr, MPFR_RNDN);
-				
-				mpfr_clears(c, cr, rc, yr, rej, sigma2, discrete_normalisation, comp, r1, r2, norm[0], norm[1], yrc, NULL);
-				return ret;
+				return yr + cr;
 			}
 		}
-	}	
+	}
 }
 
 /* sample ephemeral key with st.d \sigma_e = 2 from binomial distribution */

@@ -7,7 +7,7 @@ PROGRAM=latte
 all: $(PROGRAM)
 
 $(PROGRAM): $(OBJS)
-	$(CC) $(OBJS) -o $(PROGRAM) -lgmp -lmpfr -lmpc -lXKCP
+	$(CC) $(OBJS) -o $(PROGRAM) -lgmp -lmpfr -lmpc -lm -lXKCP
 
 clean:;
 	rm -f *.o $(PROGRAM)
