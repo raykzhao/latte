@@ -43,8 +43,11 @@ int main()
 	
 	srand(time(NULL));
 	
+	fprintf(stderr, "Latte-4 benchmark\n");
 	for (r = 0; r < BENCHMARK_ROUND; r++)
 	{
+		fprintf(stderr, "%lu\n", r);
+		
 		randombytes(seed, 32);
 		
 		cycle1 = cpucycles();
