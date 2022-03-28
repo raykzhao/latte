@@ -26,14 +26,13 @@
 #define SAMPLE_B_BOUND 16760833
 
 /* max(||g, -f||, ||qf* / (f * f* + g * g*), qg* / (f * f* + g * g*)) ?> \sigma_0 * \sqrt(2N) */
-static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const mpfr_t norm_bound)
+static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const double norm_bound)
 {
 	static POLY_FFT fft_f, fft_g;
-	mpc_t denom;
-	mpfr_t norm2;
-	mpfr_t tmp;
+	double complex denom;
+	double norm2;
 	
-	mpc_t fft_f_adj, fft_g_adj;
+	double complex fft_f_adj, fft_g_adj;
 	
 	uint64_t i;
 	int64_t ret;
@@ -45,65 +44,41 @@ static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const mpfr_t norm_bou
 		norm1 += f->poly[i] * f->poly[i] + g->poly[i] * g->poly[i];
 	}
 	
-	ret = mpfr_cmp_ui(norm_bound, norm1);
-	
-	if (ret >= 0)
+	if (norm_bound >= norm1)
 	{
-		poly_fft_init(&fft_f, N);
-		poly_fft_init(&fft_g, N);
-		
 		for (i = 0; i < N; i++)
 		{
-			mpc_set_si(fft_f.poly[i], f->poly[i], MPC_RNDNN);
-			mpc_set_si(fft_g.poly[i], g->poly[i], MPC_RNDNN);
+			fft_f.poly[i] = f->poly[i];
+			fft_g.poly[i] = g->poly[i];
 		}
 		
-		mpc_init2(denom, PREC);
-		mpc_init2(fft_f_adj, PREC);
-		mpc_init2(fft_g_adj, PREC);
-		
-		mpfr_inits2(PREC, norm2, tmp, NULL);
-				
 		fft(&fft_f, N);
 		fft(&fft_g, N);
 		
 		for (i = 0; i < N; i++)
 		{
-			mpc_conj(fft_f_adj, fft_f.poly[i], MPC_RNDNN);
-			mpc_mul(denom, fft_f.poly[i], fft_f_adj, MPC_RNDNN);
+			fft_f_adj = conj(fft_f.poly[i]);
+			fft_g_adj = conj(fft_g.poly[i]);
+
+			denom = fft_f.poly[i] * fft_f_adj + fft_g.poly[i] * fft_g_adj;
 			
-			mpc_conj(fft_g_adj, fft_g.poly[i], MPC_RNDNN);
-			mpc_fma(denom, fft_g.poly[i], fft_g_adj, denom, MPC_RNDNN);
-			
-			mpc_div(fft_f.poly[i], fft_f_adj, denom, MPC_RNDNN);
-			mpc_div(fft_g.poly[i], fft_g_adj, denom, MPC_RNDNN);
+			fft_f.poly[i] = fft_f_adj / denom;
+			fft_g.poly[i] = fft_g_adj / denom;
 		}
 		
 		ifft(&fft_f, N);
 		ifft(&fft_g, N);
 		
-		mpfr_set_zero(norm2, 0);
+		norm2 = 0;
 		for (i = 0; i < N; i++)
 		{
-			mpfr_sqr(tmp, mpc_realref(fft_f.poly[i]), MPFR_RNDN);
-			mpfr_add(norm2, norm2, tmp, MPFR_RNDN);
-			mpfr_sqr(tmp, mpc_realref(fft_g.poly[i]), MPFR_RNDN);
-			mpfr_add(norm2, norm2, tmp, MPFR_RNDN);
+			norm2 = norm2 + creal(fft_f.poly[i]) * creal(fft_f.poly[i]) + creal(fft_g.poly[i]) * creal(fft_g.poly[i]);
 		}
 		
-		mpfr_mul_ui(norm2, norm2, Q, MPFR_RNDN);
-		mpfr_mul_ui(norm2, norm2, Q, MPFR_RNDN);
+		norm2 = norm2 * Q;
+		norm2 = norm2 * Q;
 		
-		ret = mpfr_greater_p(norm2, norm_bound);
-		
-		poly_fft_clear(&fft_f, N);
-		poly_fft_clear(&fft_g, N);
-		
-		mpc_clear(denom);
-		mpc_clear(fft_f_adj);
-		mpc_clear(fft_g_adj);
-		
-		mpfr_clears(norm2, tmp, NULL);
+		ret = norm2 > norm_bound;
 	}
 	else
 	{
@@ -172,18 +147,17 @@ static void lift(POLY_Z *out, const POLY_Z *g, const POLY_Z *F_prime, const uint
 	poly_z_clear(&F_prime_x2, n);
 }
 
-/* length reduction */
 static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z *g, const POLY_Z *F, const POLY_Z *G, const uint64_t n)
 {
 	uint64_t i;
 	
-	static POLY_FFT f_hi, g_hi;
-	static POLY_FFT F_hi, G_hi;
+	static POLY_FFT_HIGH f_hi, g_hi;
+	static POLY_FFT_HIGH F_hi, G_hi;
 	
-	static POLY_FFT k_denom;
-	static POLY_FFT k_fft;
+	static POLY_FFT_HIGH k_denom;
+	static POLY_FFT_HIGH k_fft;
 	
-	static POLY_FFT f_hi_adj, g_hi_adj;
+	static POLY_FFT_HIGH f_hi_adj, g_hi_adj;
 	
 	mpfr_t k_round;
 	static POLY_Z k_poly, fk, gk;
@@ -191,18 +165,18 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 	mpz_t norm_old, norm_new;
 	static POLY_Z F_new, G_new;
 	
-	poly_fft_init(&f_hi, n);
-	poly_fft_init(&g_hi, n);
+	poly_fft_init_high(&f_hi, n);
+	poly_fft_init_high(&g_hi, n);
 	
-	poly_fft_init(&f_hi_adj, n);
-	poly_fft_init(&g_hi_adj, n);
+	poly_fft_init_high(&f_hi_adj, n);
+	poly_fft_init_high(&g_hi_adj, n);
 	
-	poly_fft_init(&k_denom, n);
+	poly_fft_init_high(&k_denom, n);
 	
-	poly_fft_init(&k_fft, n);
+	poly_fft_init_high(&k_fft, n);
 	
-	poly_fft_init(&F_hi, n);
-	poly_fft_init(&G_hi, n);
+	poly_fft_init_high(&F_hi, n);
+	poly_fft_init_high(&G_hi, n);
 	
 	mpz_inits(norm_old, norm_new, NULL);
 	
@@ -212,8 +186,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		mpc_set_z(g_hi.poly[i], g->poly[i], MPC_RNDNN);
 	}
 	
-	fft(&f_hi, n);
-	fft(&g_hi, n);
+	fft_reduce_k(&f_hi, n);
+	fft_reduce_k(&g_hi, n);
 	
 	for (i = 0; i < n; i++)
 	{
@@ -233,7 +207,7 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		mpz_addmul(norm_old, G_red->poly[i], G_red->poly[i]);
 	}
 	
-	mpfr_init2(k_round, PREC);
+	mpfr_init2(k_round, REDUCE_K_PREC);
 	poly_z_init(&k_poly, n);
 	
 	poly_z_init(&fk, n);
@@ -250,8 +224,8 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 			mpc_set_z(G_hi.poly[i], G_red->poly[i], MPC_RNDNN);
 		}
 		
-		fft(&F_hi, n);
-		fft(&G_hi, n);
+		fft_reduce_k(&F_hi, n);
+		fft_reduce_k(&G_hi, n);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -261,7 +235,7 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 			mpc_div(k_fft.poly[i], k_fft.poly[i], k_denom.poly[i], MPC_RNDNN);
 		}
 		
-		ifft(&k_fft, n);
+		ifft_reduce_k(&k_fft, n);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -296,18 +270,18 @@ static void reduce_k(POLY_Z *F_red, POLY_Z *G_red, const POLY_Z *f, const POLY_Z
 		mpz_set_ui(norm_new, 0);
 	}
 	
-	poly_fft_clear(&f_hi, n);
-	poly_fft_clear(&g_hi, n);
+	poly_fft_clear_high(&f_hi, n);
+	poly_fft_clear_high(&g_hi, n);
 	
-	poly_fft_clear(&f_hi_adj, n);
-	poly_fft_clear(&g_hi_adj, n);
+	poly_fft_clear_high(&f_hi_adj, n);
+	poly_fft_clear_high(&g_hi_adj, n);
 	
-	poly_fft_clear(&k_denom, n);
+	poly_fft_clear_high(&k_denom, n);
 	
-	poly_fft_clear(&k_fft, n);
+	poly_fft_clear_high(&k_fft, n);
 	
-	poly_fft_clear(&F_hi, n);
-	poly_fft_clear(&G_hi, n);
+	poly_fft_clear_high(&F_hi, n);
+	poly_fft_clear_high(&G_hi, n);
 
 	mpfr_clear(k_round);
 	
@@ -409,7 +383,6 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 {
 	static POLY_Z f_z, g_z, F_z, G_z;
 	
-	mpfr_t norm_bound;
 	uint64_t i;
 	
 	poly_z_init(&f_z, N);
@@ -417,10 +390,6 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_init(&F_z, N);
 	poly_z_init(&G_z, N);
 	
-	mpfr_init2(norm_bound, PREC);
-	
-	mpfr_set_str(norm_bound, norm_str[0], 10, MPFR_RNDN);
-		
 	while (1)
 	{
 		/* f, g <-- (D_{\sigma_0})^N */
@@ -428,7 +397,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		sample_0z(g);
 		
 		/* Norm check */
-		if (gs_norm(f, g, norm_bound))
+		if (gs_norm(f, g, norm_l[0]))
 		{
 			continue;
 		}
@@ -454,8 +423,6 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		G->poly[i] = mpz_get_si(G_z.poly[i]);
 	}
 	
-	mpfr_clear(norm_bound);
-
 	poly_z_clear(&f_z, N);
 	poly_z_clear(&g_z, N);
 	poly_z_clear(&F_z, N);
