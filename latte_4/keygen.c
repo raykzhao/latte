@@ -414,7 +414,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		}
 		
 		/* Find F, G such that f * G - g * F = q */
-	} while (tower_solver(&F_z, &G_z, &f_z, &g_z, N))
+	} while (tower_solver(&F_z, &G_z, &f_z, &g_z, N));
 	
 	for (i = 0; i < N; i++)
 	{
@@ -467,12 +467,12 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 		ntt(&f_ntt);
 		
 		/* check invertibility of f over R_q */
-		tmp = f_ntt.poly[0];
-		for (i = 1; i < N; i++)
+		tmp = 0;
+		for (i = 0; i < N; i++)
 		{
-			tmp &= f_ntt.poly[i];
+			tmp |= !(f_ntt.poly[i]);
 		}
-	} while (!tmp);
+	} while (tmp);
 	
 	memcpy(&g_ntt, &(basis->mat[0][0]), sizeof(POLY_64));
 	ntt(&g_ntt);
