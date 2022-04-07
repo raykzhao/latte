@@ -33,10 +33,9 @@ int main()
 	
 	static MAT_64 basis;
 	static POLY_64 h;
-	static POLY_64 b;
 	static POLY_64 a[L + 1];
-	static POLY_64 t[L + 2];
-	static POLY_64 c[L + 2];
+	static POLY_64 t[L];
+	static POLY_64 c[L + 1];
 	
 	long long cycle1, cycle2, cycle3, cycle4, cycle5, cycle6, cycle7;
 	
@@ -50,7 +49,7 @@ int main()
 		randombytes(seed, 32);
 		
 		cycle1 = cpucycles();
-		keygen(&basis, &h, &b, seed);
+		keygen(&basis, &h, seed);
 		cycle2 = cpucycles();
 		
 		for (i = 0; i < N; i++)
@@ -62,16 +61,16 @@ int main()
 		randombytes(seed, 32);
 		
 		cycle3 = cpucycles();
-		extract(t, &basis, &b, a + 1, 1, seed);
+		extract(t, &basis, a + 1, 1, seed);
 		cycle4 = cpucycles();
 		
 		randombytes(mu, 32);
 		randombytes(seed, 32);
 		
 		cycle5 = cpucycles();	
-		encrypt(z, c, mu, a, &b, 1, seed);
+		encrypt(z, c, mu, a, 1, seed);
 		cycle6 = cpucycles();
-		ret = decrypt(mu, z, c, a, &b, t, 1);
+		ret = decrypt(mu, z, c, a, t, 1);
 		cycle7 = cpucycles();
 		
 		printf("%lld,%lld,%lld,%lld,%lu\n", cycle2 - cycle1, cycle4 - cycle3, cycle6 - cycle5, cycle7 - cycle6, ret);

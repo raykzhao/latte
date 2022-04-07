@@ -113,7 +113,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 				fft(&c, N);
 				
 				/* sample preimage */
-				sample_preimage(s_fft.mat[i], &fft_basis, &tree_root, tree_dim2, &c, l + 1);
+				sample_preimage(s_fft.mat[i], &fft_basis, &tree_root, tree_dim2, &c, l + 1, 0);
 				
 				for (j = 0; j < l + 1; j++)
 				{

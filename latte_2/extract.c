@@ -16,7 +16,7 @@
 #include "fastrandombytes.h"
 #include "red.h"
 
-void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a, const uint64_t l, const unsigned char *seed)
+void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *a, const uint64_t l, const unsigned char *seed)
 {
 	static MAT_FFT fft_basis;
 	static MAT_FFT g;
@@ -24,7 +24,7 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	static POLY_FFT tree_dim2[(L + 1) * (N - 1)];
 	static POLY_64 c_ntt;
 	static POLY_FFT c;
-	static POLY_FFT s[L + 1];
+	static POLY_FFT s[L];
 	
 	uint64_t i, j, p;
 	
@@ -47,18 +47,10 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	
 	fft_ldl(&tree_root, tree_dim2, &g, l + 1, sigma_l[l]);
 	
-	/* t_{l + 1} <-- (D_{\sigma_l})^N */
+	/* c = A_l */
 	for (i = 0; i < N; i++)
 	{
-		t[l + 1].poly[i] = sample_z(0, sigma_l[l]);
-	}
-	
-	ntt(t + l + 1);
-	
-	/* c = b - t_{l + 1} * A_l */
-	for (i = 0; i < N; i++)
-	{
-		c_ntt.poly[i] = con_add(b->poly[i] - montgomery(t[l + 1].poly[i], a->poly[i]), Q);
+		c_ntt.poly[i] = a->poly[i];
 	}
 	
 	intt(&c_ntt);
@@ -70,9 +62,9 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *b, const POLY_64 *a
 	fft(&c, N);
 	
 	/* Sample preimage */
-	sample_preimage(s, &fft_basis, &tree_root, tree_dim2, &c, l + 1);
+	sample_preimage(s, &fft_basis, &tree_root, tree_dim2, &c, l + 1, 1);
 	
-	for (i = 0; i < l + 1; i++)
+	for (i = 0; i < l; i++)
 	{
 		ifft(s + i, N);
 		

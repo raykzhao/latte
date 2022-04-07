@@ -18,12 +18,12 @@
 
 #include <libXKCP.a.headers/SimpleFIPS202.h>
 
-void encrypt(unsigned char *z, POLY_64 *c, const unsigned char *mu, const POLY_64 *a, const POLY_64 *b, const uint64_t l, const unsigned char *seed)
+void encrypt(unsigned char *z, POLY_64 *c, const unsigned char *mu, const POLY_64 *a, const uint64_t l, const unsigned char *seed)
 {
 	unsigned char seed_in[64];
 	unsigned char seed_kdf[32];
 	
-	static POLY_64 e, e_l[L + 2];
+	static POLY_64 e, e_l[L + 1];
 	static POLY_64 m;
 	
 	uint64_t i, p;
@@ -49,15 +49,15 @@ void encrypt(unsigned char *z, POLY_64 *c, const unsigned char *mu, const POLY_6
 	
 	ntt(&e);
 	
-	for (i = 0; i < l + 2; i++)
+	for (i = 0; i < l + 1; i++)
 	{
 		sample_e(e_l + i);
 		
 		ntt(e_l + i);
 	}
 	
-	/* C_i = A_i * e + e_i */
-	for (i = 0; i < l + 1; i++)
+	/* C_i = A_i * e + e_i for 0<=i<=l-1 (A_0=h) */
+	for (i = 0; i < l; i++)
 	{
 		for (p = 0; p < N; p++)
 		{
@@ -70,10 +70,10 @@ void encrypt(unsigned char *z, POLY_64 *c, const unsigned char *mu, const POLY_6
 	
 	ntt(&m);
 	
-	/* C_b = b * e + e_b + m */
+	/* C_l = A_l * e + e_l + m */
 	for (p = 0; p < N; p++)
 	{
-		c[l + 1].poly[p] = con_sub(montgomery(b->poly[p], e.poly[p]) + e_l[l + 1].poly[p], Q);
-		c[l + 1].poly[p] = con_sub(c[l + 1].poly[p] + m.poly[p], Q);
+		c[l].poly[p] = con_sub(montgomery(a[l].poly[p], e.poly[p]) + e_l[l].poly[p], Q);
+		c[l].poly[p] = con_sub(c[l].poly[p] + m.poly[p], Q);
 	}
 }

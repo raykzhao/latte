@@ -21,8 +21,6 @@
 #include <mpfr.h>
 #include <mpc.h>
 
-#include "littleendian.h"
-
 #define SAMPLE_B_LEN 1052
 #define SAMPLE_B_BYTE 5
 #define SAMPLE_B_BOUND 1099494850576LL
@@ -414,7 +412,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		}
 		
 		/* Find F, G such that f * G - g * F = q */
-	} while (tower_solver(&F_z, &G_z, &f_z, &g_z, N));
+	} while (tower_solver(&F_z, &G_z, &f_z, &g_z, N, 0));
 	
 	for (i = 0; i < N; i++)
 	{
@@ -428,28 +426,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_clear(&G_z, N);
 }
 
-static void sample_b(POLY_64 *b)
-{
-	static unsigned char r[SAMPLE_B_LEN * SAMPLE_B_BYTE];
-	
-	uint64_t i, x;
-	unsigned char *r_head = r;
-	
-	fastrandombytes(r, SAMPLE_B_LEN * SAMPLE_B_BYTE);
-	
-	for (i = 0; i < N; i++)
-	{
-		do
-		{
-			x = load_40(r_head);
-			r_head += SAMPLE_B_BYTE;
-		} while (x >= SAMPLE_B_BOUND);
-		
-		b->poly[i] = barrett(x, BARRETT_B_FACTOR, BARRETT_B_SHIFT);
-	}
-}
-
-void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
+void keygen(MAT_64 *basis, POLY_64 *h, const unsigned char *seed)
 {
 	static POLY_64 f_ntt, g_ntt;
 	
@@ -491,7 +468,4 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 		basis->mat[0][1].poly[i] = -basis->mat[0][1].poly[i];
 		basis->mat[1][1].poly[i] = -basis->mat[1][1].poly[i];
 	}
-	
-	/* b <-- U(R_q) */
-	sample_b(b);
 }

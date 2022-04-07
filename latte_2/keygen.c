@@ -21,8 +21,6 @@
 #include <mpfr.h>
 #include <mpc.h>
 
-#include "littleendian.h"
-
 #define SAMPLE_B_LEN 2091
 #define SAMPLE_B_BYTE 4
 #define SAMPLE_B_BOUND 4294443136
@@ -427,28 +425,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_clear(&G_z, N);
 }
 
-static void sample_b(POLY_64 *b)
-{
-	static unsigned char r[SAMPLE_B_LEN * SAMPLE_B_BYTE];
-	
-	uint64_t i, x;
-	unsigned char *r_head = r;
-	
-	fastrandombytes(r, SAMPLE_B_LEN * SAMPLE_B_BYTE);
-	
-	for (i = 0; i < N; i++)
-	{
-		do
-		{
-			x = load_32(r_head);
-			r_head += SAMPLE_B_BYTE;
-		} while (x >= SAMPLE_B_BOUND);
-		
-		b->poly[i] = barrett(x, BARRETT_B_FACTOR, BARRETT_B_SHIFT);
-	}
-}
-
-void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
+void keygen(MAT_64 *basis, POLY_64 *h, const unsigned char *seed)
 {
 	static POLY_64 f_ntt, g_ntt;
 	
@@ -490,7 +467,4 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 		basis->mat[0][1].poly[i] = -basis->mat[0][1].poly[i];
 		basis->mat[1][1].poly[i] = -basis->mat[1][1].poly[i];
 	}
-	
-	/* b <-- U(R_q) */
-	sample_b(b);
 }

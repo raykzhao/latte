@@ -169,7 +169,7 @@ static void fft_sampling(POLY_FFT *z, const MAT_FFT *tree_root, const POLY_FFT *
 
 /* Sample preimage 
  * Equivalent to (c, 0) - GPV(B, \sigma, c) */
-void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, const POLY_FFT *tree_dim2, const POLY_FFT *c, const uint64_t dim)
+void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, const POLY_FFT *tree_dim2, const POLY_FFT *c, const uint64_t dim, const uint64_t is_extract)
 {
 	static POLY_FFT t[L + 1];
 	static POLY_FFT z[L + 1];
@@ -208,18 +208,18 @@ void sample_preimage(POLY_FFT *s, const MAT_FFT *b, const MAT_FFT *tree_root, co
 		}
 	}
 	
-	for (i = 0; i < dim; i++)
+	for (i = is_extract; i < dim; i++)
 	{
 		for (p = 0; p < N; p++)
 		{
-			s[i].poly[p] = 0;
+			s[i - is_extract].poly[p] = 0;
 		}
 		
 		for (j = 0; j < dim; j++)
 		{
 			for (p = 0; p < N; p++)
 			{
-				s[i].poly[p] = s[i].poly[p] + z[j].poly[p] * b->mat[j][i].poly[p];
+				s[i - is_extract].poly[p] = s[i - is_extract].poly[p] + z[j].poly[p] * b->mat[j][i].poly[p];
 			}
 		}
 	}

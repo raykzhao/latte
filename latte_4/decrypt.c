@@ -18,11 +18,11 @@
 
 #include <libXKCP.a.headers/SimpleFIPS202.h>
 
-uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, const POLY_64 *a, const POLY_64 *b, const POLY_64 *t, const uint64_t l)
+uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, const POLY_64 *a, const POLY_64 *t, const uint64_t l)
 {
 	static POLY_64 v;
-	static POLY_64 e, e_l[L + 2];
-	static POLY_64 c_prime[L + 2];
+	static POLY_64 e, e_l[L + 1];
+	static POLY_64 c_prime[L + 1];
 	static POLY_64 m;
 	
 	uint64_t i, p;
@@ -30,14 +30,14 @@ uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, co
 	unsigned char seed_in[64];
 	unsigned char seed_kdf[32];
 	
-	/* V = C_b - C_h * t_1 - ... - C_l * t_{l + 1} */
-	memcpy(&v, c + l + 1, sizeof(POLY_64));
+	/* V = C_l - C_h * t_1 - ... - C_{l-1} * t_{l} */
+	memcpy(&v, c + l, sizeof(POLY_64));
 	
-	for (i = 0; i < l + 1; i++)
+	for (i = 0; i < l; i++)
 	{
 		for (p = 0; p < N; p++)
 		{
-			v.poly[p] = con_add(v.poly[p] - montgomery(c[i].poly[p], t[i + 1].poly[p]), Q);
+			v.poly[p] = con_add(v.poly[p] - montgomery(c[i].poly[p], t[i].poly[p]), Q);
 		}
 	}
 	
@@ -58,7 +58,7 @@ uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, co
 	
 	ntt(&e);
 	
-	for (i = 0; i < l + 2; i++)
+	for (i = 0; i < l + 1; i++)
 	{
 		sample_e(e_l + i);
 		
@@ -66,7 +66,7 @@ uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, co
 	}
 	
 	/* C_i' = A_i * e' + e_i' */
-	for (i = 0; i < l + 1; i++)
+	for (i = 0; i < l; i++)
 	{
 		for (p = 0; p < N; p++)
 		{
@@ -82,12 +82,12 @@ uint64_t decrypt(unsigned char *mu, const unsigned char *z, const POLY_64 *c, co
 	/* C_b' = b * e' + e_b' + m' */
 	for (p = 0; p < N; p++)
 	{
-		c_prime[l + 1].poly[p] = con_sub(montgomery(b->poly[p], e.poly[p]) + e_l[l + 1].poly[p], Q);
-		c_prime[l + 1].poly[p] = con_sub(c_prime[l + 1].poly[p] + m.poly[p], Q);
+		c_prime[l].poly[p] = con_sub(montgomery(a[l].poly[p], e.poly[p]) + e_l[l].poly[p], Q);
+		c_prime[l].poly[p] = con_sub(c_prime[l].poly[p] + m.poly[p], Q);
 	}
 	
 	/* (C_h', C_1',..., C_l', C_b') ?= (C_h', C_1',..., C_l', C_b') */
-	for (i = 0; i < l + 2; i++)
+	for (i = 0; i < l + 1; i++)
 	{
 		for (p = 0; p < N; p++)
 		{

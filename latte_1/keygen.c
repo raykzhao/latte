@@ -423,33 +423,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_clear(&G_z, N);
 }
 
-static inline uint64_t load_24(const unsigned char *x)
-{
-	return ((uint64_t)(*x)) | (((uint64_t)(*(x + 1))) << 8) | (((uint64_t)(*(x + 2))) << 16);
-}
-
-static void sample_b(POLY_64 *b)
-{
-	static unsigned char r[SAMPLE_B_LEN * SAMPLE_B_BYTE];
-	
-	uint64_t i, x;
-	unsigned char *r_head = r;
-	
-	fastrandombytes(r, SAMPLE_B_LEN * SAMPLE_B_BYTE);
-	
-	for (i = 0; i < N; i++)
-	{
-		do
-		{
-			x = load_24(r_head);
-			r_head += SAMPLE_B_BYTE;
-		} while (x >= SAMPLE_B_BOUND);
-		
-		b->poly[i] = x;
-	}
-}
-
-void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
+void keygen(MAT_64 *basis, POLY_64 *h, const unsigned char *seed)
 {
 	static POLY_64 f_ntt, g_ntt;
 	
@@ -491,7 +465,4 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 		basis->mat[0][1].poly[i] = -basis->mat[0][1].poly[i];
 		basis->mat[1][1].poly[i] = -basis->mat[1][1].poly[i];
 	}
-	
-	/* b <-- U(R_q) */
-	sample_b(b);
 }
