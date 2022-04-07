@@ -461,14 +461,25 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 	
 	uint64_t i;
 	
+	int64_t tmp;
+	
 	fastrandombytes_setseed(seed);
 	
-	ntru_basis(&(basis->mat[0][1]), &(basis->mat[0][0]), &(basis->mat[1][1]), &(basis->mat[1][0]));
+	do
+	{
+		ntru_basis(&(basis->mat[0][1]), &(basis->mat[0][0]), &(basis->mat[1][1]), &(basis->mat[1][0]));
+		
+		memcpy(&f_ntt, &(basis->mat[0][1]), sizeof(POLY_64));
+		ntt(&f_ntt);
+		
+		/* check invertibility of f over R_q */
+		for (i = 0; i < N; i++)
+		{
+			tmp &= f_ntt.poly[i];
+		}
+	} while (!tmp);
 	
-	memcpy(&f_ntt, &(basis->mat[0][1]), sizeof(POLY_64));
 	memcpy(&g_ntt, &(basis->mat[0][0]), sizeof(POLY_64));
-
-	ntt(&f_ntt);
 	ntt(&g_ntt);
 	
 	/* h = g * f^{-1} mod q */
