@@ -390,7 +390,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 	poly_z_init(&F_z, N);
 	poly_z_init(&G_z, N);
 	
-	while (1)
+	do
 	{
 		/* f, g <-- (D_{\sigma_0})^N */
 		sample_0z(f);
@@ -409,13 +409,7 @@ static void ntru_basis(POLY_64 *f, POLY_64 *g, POLY_64 *F, POLY_64 *G)
 		}
 		
 		/* Find F, G such that f * G - g * F = q */
-		if (tower_solver(&F_z, &G_z, &f_z, &g_z, N))
-		{
-			continue;
-		}
-		
-		break;
-	}
+	} while (tower_solver(&F_z, &G_z, &f_z, &g_z, N))
 	
 	for (i = 0; i < N; i++)
 	{
