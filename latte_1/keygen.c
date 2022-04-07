@@ -473,7 +473,8 @@ void keygen(MAT_64 *basis, POLY_64 *h, POLY_64 *b, const unsigned char *seed)
 		ntt(&f_ntt);
 		
 		/* check invertibility of f over R_q */
-		for (i = 0; i < N; i++)
+		tmp = f_ntt.poly[0];
+		for (i = 1; i < N; i++)
 		{
 			tmp &= f_ntt.poly[i];
 		}
