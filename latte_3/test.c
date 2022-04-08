@@ -60,10 +60,8 @@ int main()
 			a[2].poly[i] = rand() % Q;
 		}
 		
-		randombytes(seed, 32);
-		
 		cycle3 = cpucycles();
-		extract(t, basis, a + 1, 1, seed);
+		extract(t, basis, a + 1, 1);
 		cycle4 = cpucycles();
 		
 		randombytes(mu, 32);
@@ -81,10 +79,8 @@ int main()
 		delegate(basis + 1, basis, a + 1, 1, seed);
 		cycle9 = cpucycles();
 		
-		randombytes(seed, 32);
-		
 		cycle10 = cpucycles();
-		extract(t, basis + 1, a + 2, 2, seed);
+		extract(t, basis + 1, a + 2, 2);
 		cycle11 = cpucycles();
 		
 		randombytes(mu, 32);

@@ -16,7 +16,9 @@
 #include "fastrandombytes.h"
 #include "red.h"
 
-void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *a, const uint64_t l, const unsigned char *seed)
+#include <libXKCP.a.headers/SimpleFIPS202.h>
+
+void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *a, const uint64_t l)
 {
 	static MAT_FFT fft_basis;
 	static MAT_FFT g;
@@ -26,7 +28,16 @@ void extract(POLY_64 *t, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	static POLY_FFT c;
 	static POLY_FFT s[L];
 	
+	unsigned char seed[32];
+	
+	static unsigned char hash_in[sizeof(int64_t) * N + 1];
+	
 	uint64_t i, j, p;
+	
+	memcpy(hash_in, a->poly, sizeof(int64_t) * N);
+	hash_in[sizeof(int64_t) * N] = 'G';
+	
+	SHAKE256(seed, 32, hash_in, sizeof(int64_t) * N + 1);
 	
 	fastrandombytes_setseed(seed);
 	

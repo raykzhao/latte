@@ -58,10 +58,8 @@ int main()
 			a[1].poly[i] = rand() % Q;
 		}
 
-		randombytes(seed, 32);
-		
 		cycle3 = cpucycles();
-		extract(t, &basis, a + 1, 1, seed);
+		extract(t, &basis, a + 1, 1);
 		cycle4 = cpucycles();
 		
 		randombytes(mu, 32);
