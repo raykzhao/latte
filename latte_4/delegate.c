@@ -77,7 +77,7 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	
 	fft_ldl(&tree_root, tree_dim2, &basis_g, l + 1, sigma_l[l]);
 	
-	do
+	while (1)
 	{
 		for (i = 0; i < l + 1; i++)
 		{
@@ -171,7 +171,14 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 		{
 			continue;
 		}
-	} while (tower_solver(&F, &G, &f, &g, N, l));
+		
+		if (tower_solver(&F, &G, &f, &g, N, l))
+		{
+			continue;
+		}
+		
+		break;
+	}
 	
 	for (i = 0; i < l + 1; i++)
 	{
