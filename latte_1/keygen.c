@@ -21,10 +21,6 @@
 #include <mpfr.h>
 #include <mpc.h>
 
-#define SAMPLE_B_LEN 1083
-#define SAMPLE_B_BYTE 3
-#define SAMPLE_B_BOUND 16760833
-
 /* max(||g, -f||, ||qf* / (f * f* + g * g*), qg* / (f * f* + g * g*)) ?> \sigma_0 * \sqrt(2N) */
 static int64_t gs_norm(const POLY_64 *f, const POLY_64 *g, const double norm_bound)
 {
