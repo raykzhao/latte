@@ -73,10 +73,8 @@ int main()
 		ret1 = decrypt(mu, z, c, a, t, 1);
 		cycle7 = cpucycles();
 		
-		randombytes(seed, 32);
-		
 		cycle8 = cpucycles();
-		delegate(basis + 1, basis, a + 1, 1, seed);
+		delegate(basis + 1, basis, a + 1, 1);
 		cycle9 = cpucycles();
 		
 		cycle10 = cpucycles();
