@@ -19,7 +19,9 @@
 
 #include <gmp.h>
 
-void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l, const unsigned char *seed)
+#include <libXKCP.a.headers/SimpleFIPS202.h>
+
+void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l)
 {
 	static MAT_FFT fft_basis;
 	static MAT_FFT basis_g;
@@ -52,6 +54,15 @@ void delegate(MAT_64 *s, const MAT_64 *basis, const POLY_64 *a, const uint64_t l
 	uint64_t norm;
 	
 	uint64_t f_det_check;
+
+	unsigned char seed[32];
+	
+	static unsigned char hash_in[sizeof(int64_t) * N + 1];
+	
+	memcpy(hash_in, a->poly, sizeof(int64_t) * N);
+	hash_in[sizeof(int64_t) * N] = 'D';
+	
+	SHAKE256(seed, 32, hash_in, sizeof(int64_t) * N + 1);
 	
 	fastrandombytes_setseed(seed);
 	
