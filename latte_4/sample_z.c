@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Integer samplers               *
- * ****************************** */
- 
 #include <stdint.h>
 #include "sample_z.h"
 #include "param.h"

@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * NTT                            *
- * ****************************** */
- 
 #ifndef _NTT_H
 #define _NTT_H
 

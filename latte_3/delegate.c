@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Delegation                     *
- * ****************************** */
-
 #include <stdint.h>
 #include "delegate.h"
 #include "param.h"

@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Matrice arithmetic             *
- * ****************************** */
- 
 #ifndef _MAT_H
 #define _MAT_H
 

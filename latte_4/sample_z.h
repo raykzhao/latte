@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Integer samplers               *
- * ****************************** */
- 
 #ifndef _SAMPLE_Z_H
 #define _SAMPLE_Z_H
 

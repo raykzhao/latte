@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Lattice Gaussian sampler       *
- * ****************************** */
- 
 #ifndef _SAMPLE_FFT_H
 #define _SAMPLE_FFT_H
 

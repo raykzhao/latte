@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Extraction                     *
- * ****************************** */
- 
 #ifndef _EXTRACT_H
 #define _EXTRACT_H
 

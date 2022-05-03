@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Encode/Decode                  *
- * ****************************** */
- 
 #include <stdint.h>
 #include "encode.h"
 #include "param.h"

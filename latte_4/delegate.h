@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Delegation                     *
- * ****************************** */
-
 #ifndef _DELEGATE_H
 #define _DELEGATE_H
 

@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Encode/Decode                  *
- * ****************************** */
- 
 #ifndef _ENCODE_H
 #define _ENCODE_H
 

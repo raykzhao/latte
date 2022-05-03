@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * FFT                            *
- * ****************************** */
- 
 #include <stdint.h>
 #include "fft.h"
 #include "param.h"

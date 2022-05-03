@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * NTT                            *
- * ****************************** */
- 
 #include <stdint.h>
 #include "ntt.h"
 #include "param.h"

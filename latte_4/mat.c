@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Matrice arithmetic             *
- * ****************************** */
- 
 #include <stdint.h>
 #include "mat.h"
 #include "param.h"

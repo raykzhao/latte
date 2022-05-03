@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Keygen                         *
- * ****************************** */
- 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

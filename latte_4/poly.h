@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Polynomial arithmetic          *
- * ****************************** */
- 
 #ifndef _POLY_H
 #define _POLY_H
 

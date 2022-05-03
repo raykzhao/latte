@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Decryption                     *
- * ****************************** */
- 
 #ifndef _DECRYPT_H
 #define _DECRYPT_H
 

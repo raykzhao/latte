@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Keygen                         *
- * ****************************** */
- 
 #ifndef _KEYGEN_H
 #define _KEYGEN_H
 

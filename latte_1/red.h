@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Modular arithmetic             *
- * ****************************** */
- 
 #ifndef _RED_H
 #define _RED_H
 

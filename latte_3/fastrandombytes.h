@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * PRG                            *
- * ****************************** */
- 
 #ifndef FASTRANDOMBYTES_H
 #define FASTRANDOMBYTES_H
 

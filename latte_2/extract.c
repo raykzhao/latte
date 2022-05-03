@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Extraction                     *
- * ****************************** */
- 
 #include <stdint.h>
 #include "extract.h"
 #include "param.h"

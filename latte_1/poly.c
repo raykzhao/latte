@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Polynomial arithmetic          *
- * ****************************** */
- 
 #include <stdint.h>
 #include "poly.h"
 #include "param.h"

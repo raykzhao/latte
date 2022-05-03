@@ -1,9 +1,3 @@
-/* ****************************** *
- * Implemented by Raymond K. ZHAO *
- *                                *
- * Lattice Gaussian sampler       *
- * ****************************** */
- 
 #include <stdint.h>
 #include "sample_fft.h"
 #include "param.h"
